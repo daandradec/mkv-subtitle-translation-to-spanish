@@ -2,6 +2,9 @@ param(
     [string]$InputMkv = "Love Live! Nijigasaki High School Idol Club the Movie - Chapter 2 [BD 1080p HEVC OPUS] [34C012E9].mkv",
     [string]$EnglishAss = "subtitle_work\Love Live! Nijigasaki High School Idol Club the Movie - Chapter 2 [BD 1080p HEVC OPUS] [34C012E9].eng.ass",
     [string]$SpanishAss = "subtitle_work\Love Live! Nijigasaki High School Idol Club the Movie - Chapter 2 [BD 1080p HEVC OPUS] [34C012E9].spa.ass",
+    [string]$TvSafeSrt = "",
+    [ValidateSet("ass", "srt", "both")]
+    [string]$EmbeddedSubtitleFormat = "both",
     [string]$OutputMkv = "Love Live! Nijigasaki High School Idol Club the Movie - Chapter 2 [BD 1080p HEVC OPUS] [34C012E9].spa.mkv",
     [string[]]$TranslationJson = @(
         "translations_dialogue_part1.json",
@@ -43,6 +46,13 @@ foreach ($subtitlePath in @($EnglishAss, $SpanishAss)) {
     }
 }
 
+if ($TvSafeSrt) {
+    $tvSafeDir = Split-Path -Parent $TvSafeSrt
+    if ($tvSafeDir -and !(Test-Path -LiteralPath $tvSafeDir)) {
+        New-Item -ItemType Directory -Path $tvSafeDir | Out-Null
+    }
+}
+
 Write-Host "Extracting English ASS subtitle stream 0:3..."
 Invoke-Checked { ffmpeg -y -v error -i $InputMkv -map 0:3 -c:s copy $EnglishAss }
 
@@ -66,17 +76,61 @@ Invoke-Checked {
         --blank-translated-english-fx
 }
 
+if ($TvSafeSrt) {
+    Write-Host "Generating TV-safe Spanish SRT..."
+    Invoke-Checked {
+        python ".\ass_to_tv_safe_srt.py" `
+            --input-ass $SpanishAss `
+            --output-srt $TvSafeSrt
+    }
+}
+
+$outputDir = Split-Path -Parent $OutputMkv
+if ($outputDir -and !(Test-Path -LiteralPath $outputDir)) {
+    New-Item -ItemType Directory -Path $outputDir | Out-Null
+}
+
+if ($EmbeddedSubtitleFormat -in @("srt", "both") -and !$TvSafeSrt) {
+    throw "EmbeddedSubtitleFormat '$EmbeddedSubtitleFormat' requires -TvSafeSrt."
+}
+
 Write-Host "Remuxing MKV with MKVToolNix without re-encoding video/audio..."
 Invoke-Checked {
     $mkvMergePath = if ($null -ne $MkvMergeCommand) { $MkvMergeCommand.Source } else { $LocalMkvMerge }
-    & $mkvMergePath `
-        --output $OutputMkv `
-        --default-track-flag 3:no `
-        $InputMkv `
-        --language 0:spa `
-        --track-name "0:$SpanishTitle" `
-        --default-track-flag 0:yes `
-        $SpanishAss
+    if ($EmbeddedSubtitleFormat -eq "ass") {
+        & $mkvMergePath `
+            --output $OutputMkv `
+            --default-track-flag 3:no `
+            $InputMkv `
+            --language 0:spa `
+            --track-name "0:$SpanishTitle" `
+            --default-track-flag 0:yes `
+            $SpanishAss
+    }
+    elseif ($EmbeddedSubtitleFormat -eq "srt") {
+        & $mkvMergePath `
+            --output $OutputMkv `
+            --default-track-flag 3:no `
+            $InputMkv `
+            --language 0:spa `
+            --track-name "0:$SpanishTitle TV-safe" `
+            --default-track-flag 0:yes `
+            $TvSafeSrt
+    }
+    else {
+        & $mkvMergePath `
+            --output $OutputMkv `
+            --default-track-flag 3:no `
+            $InputMkv `
+            --language 0:spa `
+            --track-name "0:$SpanishTitle" `
+            --default-track-flag 0:no `
+            $SpanishAss `
+            --language 0:spa `
+            --track-name "0:$SpanishTitle TV-safe" `
+            --default-track-flag 0:yes `
+            $TvSafeSrt
+    }
 }
 
 Write-Host "Validating subtitle streams in output..."

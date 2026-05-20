@@ -1,6 +1,6 @@
 # MKV Subtitle Translation to Spanish
 
-Workflow reproducible para extraer una pista ASS en ingles desde un MKV, aplicar traducciones al espanol y crear una copia del MKV con subtitulos `Español LatAm` embebidos como pista predeterminada.
+Workflow reproducible para extraer una pista ASS en ingles desde un MKV, aplicar traducciones al espanol y crear una copia del MKV con dos pistas espanolas embebidas: `Español LatAm` en ASS y `Español LatAm TV-safe` en SRT para reproductores o televisores que renderizan mal ASS complejo.
 
 El repositorio contiene los scripts y mapas de traduccion. Los videos, subtitulos extraidos y archivos de trabajo pesados quedan ignorados por Git.
 
@@ -39,37 +39,46 @@ C:\Program Files\MKVToolNix
 
 - `traducir_subs_mkv.ps1`: orquesta todo el flujo.
 - `ass_apply_translations.py`: aplica las traducciones sobre el ASS sin cambiar tiempos.
+- `ass_to_tv_safe_srt.py`: crea un SRT limpio sin tags ASS, dibujos vectoriales ni efectos karaoke.
 - `translations_*.json`: mapas de traduccion.
 - `.gitignore`: excluye videos, subtitulos extraidos, caches y temporales.
 
-El video fuente y el MKV final no se versionan. Deben estar localmente en la carpeta del proyecto.
+El video fuente y el MKV final no se versionan. Por defecto, coloca entradas en `input/` y revisa resultados en `output/`.
 
 ## Uso Rapido
 
-Coloca el MKV fuente en la carpeta del proyecto con el nombre esperado por defecto:
+Coloca el MKV fuente en `input/`:
 
 ```text
-Love Live! Nijigasaki High School Idol Club the Movie - Chapter 2 [BD 1080p HEVC OPUS] [34C012E9].mkv
+input\Love Live! Nijigasaki High School Idol Club the Movie - Chapter 2 [BD 1080p HEVC OPUS] [34C012E9].mkv
 ```
 
 Luego ejecuta:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\traducir_subs_mkv.ps1
+powershell -ExecutionPolicy Bypass -File .\traducir_subs_mkv.ps1 `
+  -InputMkv ".\input\Love Live! Nijigasaki High School Idol Club the Movie - Chapter 2 [BD 1080p HEVC OPUS] [34C012E9].mkv" `
+  -SpanishAss ".\output\Love Live! Nijigasaki High School Idol Club the Movie - Chapter 2 [BD 1080p HEVC OPUS] [34C012E9].spa.ass" `
+  -TvSafeSrt ".\output\Love Live! Nijigasaki High School Idol Club the Movie - Chapter 2 [BD 1080p HEVC OPUS] [34C012E9].spa.srt" `
+  -EmbeddedSubtitleFormat both `
+  -OutputMkv ".\output\portable\Love Live! Nijigasaki High School Idol Club the Movie - Chapter 2 [BD 1080p HEVC OPUS] [34C012E9].spa.mkv"
 ```
 
 El script hace lo siguiente:
 
 1. Extrae la pista de subtitulos `0:3` a `subtitle_work\*.eng.ass`.
 2. Aplica las traducciones desde los JSON.
-3. Genera `subtitle_work\*.spa.ass`.
-4. Crea un MKV nuevo con `mkvmerge`, sin recodificar video/audio.
-5. Marca la pista espanola como `spa`, titulo `Español LatAm`, y `default`.
+3. Genera `output\*.spa.ass`.
+4. Genera `output\*.spa.srt` cuando pasas `-TvSafeSrt`.
+5. Crea un MKV nuevo con `mkvmerge`, sin recodificar video/audio. Usa `-EmbeddedSubtitleFormat both` para incrustar ASS y SRT, `srt` para solo TV-safe, o `ass` para solo ASS estilizado.
+6. Marca `Español LatAm TV-safe` como `spa` y `default`; deja `Español LatAm` ASS incrustado como alternativa no-default.
 
 Salida por defecto:
 
 ```text
-Love Live! Nijigasaki High School Idol Club the Movie - Chapter 2 [BD 1080p HEVC OPUS] [34C012E9].spa.mkv
+output\portable\Love Live! Nijigasaki High School Idol Club the Movie - Chapter 2 [BD 1080p HEVC OPUS] [34C012E9].spa.mkv
+output\Love Live! Nijigasaki High School Idol Club the Movie - Chapter 2 [BD 1080p HEVC OPUS] [34C012E9].spa.ass
+output\Love Live! Nijigasaki High School Idol Club the Movie - Chapter 2 [BD 1080p HEVC OPUS] [34C012E9].spa.srt
 ```
 
 ## Uso con Otros Nombres
@@ -80,8 +89,10 @@ Puedes pasar rutas personalizadas:
 powershell -ExecutionPolicy Bypass -File .\traducir_subs_mkv.ps1 `
   -InputMkv ".\entrada.mkv" `
   -EnglishAss ".\subtitle_work\entrada.eng.ass" `
-  -SpanishAss ".\subtitle_work\entrada.spa.ass" `
-  -OutputMkv ".\entrada.spa.mkv"
+  -SpanishAss ".\output\entrada.spa.ass" `
+  -TvSafeSrt ".\output\entrada.spa.srt" `
+  -EmbeddedSubtitleFormat both `
+  -OutputMkv ".\output\portable\entrada.spa.mkv"
 ```
 
 Si usas otro MKV, revisa primero el indice de la pista de subtitulos con:
@@ -120,6 +131,6 @@ El aplicador conserva tiempos, estilos, orden de eventos y tags ASS iniciales. P
 
 ## Notas
 
-- No abras el `.spa.ass` junto al MKV final en la misma carpeta si no quieres que el reproductor lo cargue como pista externa `[Local]`.
+- Los subtitulos `[Local]` no vienen del MKV: aparecen cuando el reproductor detecta `.ass` o `.srt` externos en la misma carpeta. Para revisar o copiar a USB, usa el MKV de `output\portable\`, que queda separado de esos archivos auxiliares.
 - `subtitle_work/` esta ignorado porque contiene subtitulos generados/intermedios.
 - Los MKV estan ignorados para evitar subir archivos grandes al repositorio.
