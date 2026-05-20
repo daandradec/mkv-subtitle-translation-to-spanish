@@ -13,7 +13,12 @@ Use subagents. The main agent owns orchestration, integration, tests, and final 
 
 Read only the references needed for the current task:
 
-- `agents/subagents.yaml`: role IDs, purposes, and expected output artifact names.
+- `agents/container-inspector.md`: inspect MKV streams and source subtitle candidates.
+- `agents/semantic-segmenter.md`: group subtitle events into complete semantic units.
+- `agents/dialogue-translator.md`: translate dialogue/sign units into Spanish LatAm.
+- `agents/song-translator-reviewer.md`: reconstruct and translate safe song lyrics.
+- `agents/spanish-linguistic-reviewer.md`: review merged Spanish for naturalness and consistency.
+- `agents/technical-validator.md`: validate final subtitle files and remuxed MKV.
 - `references/agent-roles.md`: subagent responsibilities and output contracts.
 - `references/workflow.md`: end-to-end pipeline and required checkpoints.
 - `references/subtitle-formats.md`: ASS/SRT/TV-safe decisions.
