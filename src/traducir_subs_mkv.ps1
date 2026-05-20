@@ -1,5 +1,8 @@
 param(
-    [string]$InputMkv = "Love Live! Nijigasaki High School Idol Club the Movie - Chapter 2 [BD 1080p HEVC OPUS] [34C012E9].mkv",
+    [string]$InputMkv = "",
+    [int]$SourceSubtitleStreamIndex = 3,
+    [int]$SourceMkvTrackId = 3,
+    [string]$SourceLanguageOverride = "",
     [string]$EnglishAss = "subtitle_work\Love Live! Nijigasaki High School Idol Club the Movie - Chapter 2 [BD 1080p HEVC OPUS] [34C012E9].eng.ass",
     [string]$SpanishAss = "subtitle_work\Love Live! Nijigasaki High School Idol Club the Movie - Chapter 2 [BD 1080p HEVC OPUS] [34C012E9].spa.ass",
     [string]$TvSafeSrt = "",
@@ -18,9 +21,12 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+$ScriptDir = Split-Path -Parent $PSCommandPath
+$ProjectRoot = Resolve-Path (Join-Path $ScriptDir "..")
+$InputDir = Join-Path $ProjectRoot "input"
 $SpanishTitle = "Espa$([char]0x00F1)ol LatAm"
 $MkvMergeCommand = Get-Command "mkvmerge" -ErrorAction SilentlyContinue
-$LocalMkvMerge = ".\tools\mkvtoolnix\mkvmerge.exe"
+$LocalMkvMerge = Join-Path $ProjectRoot "tools\mkvtoolnix\mkvmerge.exe"
 
 function Invoke-Checked {
     param(
@@ -33,8 +39,57 @@ function Invoke-Checked {
     }
 }
 
-if (!(Test-Path -LiteralPath $InputMkv)) {
-    throw "Input MKV not found: $InputMkv"
+function Get-InputMkvCandidates {
+    if (!(Test-Path -LiteralPath $InputDir)) {
+        return @()
+    }
+    return @(Get-ChildItem -LiteralPath $InputDir -Filter "*.mkv" -File)
+}
+
+function Resolve-InputMkvPath {
+    param(
+        [string]$InputPath,
+        [bool]$WasProvided
+    )
+
+    if (!$WasProvided -or [string]::IsNullOrWhiteSpace($InputPath)) {
+        $candidates = Get-InputMkvCandidates
+        if ($candidates.Count -eq 0) {
+            throw "No se encontró ningún video MKV en la carpeta 'input'. Para ejecutar este flujo es obligatorio ubicar un archivo de video .mkv con subtítulos incrustados en 'input/' o indicar -InputMkv con la ruta del archivo."
+        }
+        if ($candidates.Count -gt 1) {
+            $names = ($candidates | ForEach-Object { $_.Name }) -join "', '"
+            throw "Se encontraron múltiples videos MKV en 'input': '$names'. El flujo solo puede procesar un video por ejecución. Indica exactamente un archivo con -InputMkv, por ejemplo: -InputMkv `"input\<nombre-del-video>.mkv`"."
+        }
+        return $candidates[0].FullName
+    }
+
+    $candidatePaths = @()
+    if ([System.IO.Path]::IsPathRooted($InputPath)) {
+        $candidatePaths += $InputPath
+    } else {
+        $candidatePaths += (Join-Path $InputDir $InputPath)
+        $candidatePaths += (Join-Path $ProjectRoot $InputPath)
+    }
+
+    foreach ($candidatePath in ($candidatePaths | Select-Object -Unique)) {
+        if (Test-Path -LiteralPath $candidatePath) {
+            $resolved = Resolve-Path -LiteralPath $candidatePath
+            if ([System.IO.Path]::GetExtension($resolved.Path).ToLowerInvariant() -ne ".mkv") {
+                throw "El archivo de entrada debe ser un video MKV: $($resolved.Path)"
+            }
+            return $resolved.Path
+        }
+    }
+
+    throw "No se encontró el archivo de video MKV indicado: $InputPath. Debe existir en 'input/' o debes pasar una ruta válida con -InputMkv."
+}
+
+$inputMkvWasProvided = $PSBoundParameters.ContainsKey("InputMkv")
+$InputMkv = Resolve-InputMkvPath -InputPath $InputMkv -WasProvided $inputMkvWasProvided
+
+if ([System.IO.Path]::GetExtension($InputMkv).ToLowerInvariant() -ne ".mkv") {
+    throw "El archivo de entrada debe ser un video MKV: $InputMkv"
 }
 
 if ($null -eq $MkvMergeCommand -and !(Test-Path -LiteralPath $LocalMkvMerge)) {
@@ -62,8 +117,42 @@ if ($NormalizationReport) {
     }
 }
 
-Write-Host "Extracting English ASS subtitle stream 0:3..."
-Invoke-Checked { ffmpeg -y -v error -i $InputMkv -map 0:3 -c:s copy $EnglishAss }
+Write-Host "Validating source subtitle language..."
+$languageArgs = @(
+    (Join-Path $ScriptDir "subtitle_language.py"),
+    "--input-mkv", $InputMkv,
+    "--stream-index", $SourceSubtitleStreamIndex,
+    "--json"
+)
+if ($SourceLanguageOverride) {
+    $languageArgs += @("--language-override", $SourceLanguageOverride)
+}
+$languageJson = & python $languageArgs
+if ($LASTEXITCODE -ne 0) {
+    throw "Source subtitle language validation failed."
+}
+$languageInfo = ($languageJson | Out-String) | ConvertFrom-Json
+$SourceLanguage = [string]$languageInfo.source_language
+Write-Host "Detected source language: $($languageInfo.source_language_name) ($SourceLanguage)"
+
+if ($SourceLanguage -ne "en" -and !$PSBoundParameters.ContainsKey("TranslationJson")) {
+    $videoStem = [System.IO.Path]::GetFileNameWithoutExtension($InputMkv)
+    $safeVideoStem = ($videoStem -replace '[\\/:*?"<>|]', '_')
+    $agenticTranslationDir = Join-Path "translations" (Join-Path $safeVideoStem $SourceLanguage)
+    if (!(Test-Path -LiteralPath $agenticTranslationDir)) {
+        New-Item -ItemType Directory -Path $agenticTranslationDir | Out-Null
+    }
+    $manifestPath = Join-Path $agenticTranslationDir "README.txt"
+    @(
+        "Source language '$SourceLanguage' is supported, but no translation maps were provided.",
+        "Generate agentic translation JSON maps for this video in this folder, then rerun with -TranslationJson.",
+        "Do not use the default English maps for this source language."
+    ) | Set-Content -Path $manifestPath -Encoding UTF8
+    throw "Supported non-English source language '$SourceLanguage' detected. Translation maps are required. Agentic workspace prepared at: $agenticTranslationDir"
+}
+
+Write-Host "Extracting source subtitle stream 0:$SourceSubtitleStreamIndex..."
+Invoke-Checked { ffmpeg -y -v error -i $InputMkv -map "0:$SourceSubtitleStreamIndex" -c:s copy $EnglishAss }
 
 $existingTranslationJson = @()
 foreach ($path in $TranslationJson) {
@@ -78,7 +167,7 @@ if ($existingTranslationJson.Count -eq 0) {
 
 Write-Host "Applying Spanish translations to ASS..."
 Invoke-Checked {
-    python ".\ass_apply_translations.py" `
+    python (Join-Path $ScriptDir "ass_apply_translations.py") `
         --input-ass $EnglishAss `
         --output-ass $SpanishAss `
         --translations $existingTranslationJson `
@@ -88,7 +177,7 @@ Invoke-Checked {
 if ($TvSafeSrt) {
     Write-Host "Generating TV-safe Spanish SRT..."
     Invoke-Checked {
-        python ".\ass_to_tv_safe_srt.py" `
+        python (Join-Path $ScriptDir "ass_to_tv_safe_srt.py") `
             --input-ass $SpanishAss `
             --output-srt $TvSafeSrt
     }
@@ -97,7 +186,7 @@ if ($TvSafeSrt) {
 if ($TvSafeSrt -and !$SkipSpanishNormalization) {
     Write-Host "Normalizing Spanish ASS and TV-safe SRT..."
     Invoke-Checked {
-        python ".\normalize_spanish_subtitles.py" `
+        python (Join-Path $ScriptDir "normalize_spanish_subtitles.py") `
             --input-ass $SpanishAss `
             --input-srt $TvSafeSrt `
             --output-ass $SpanishAss `
@@ -121,7 +210,7 @@ Invoke-Checked {
     if ($EmbeddedSubtitleFormat -eq "ass") {
         & $mkvMergePath `
             --output $OutputMkv `
-            --default-track-flag 3:no `
+            --default-track-flag "$SourceMkvTrackId`:no" `
             $InputMkv `
             --language 0:spa `
             --track-name "0:$SpanishTitle" `
@@ -131,7 +220,7 @@ Invoke-Checked {
     elseif ($EmbeddedSubtitleFormat -eq "srt") {
         & $mkvMergePath `
             --output $OutputMkv `
-            --default-track-flag 3:no `
+            --default-track-flag "$SourceMkvTrackId`:no" `
             $InputMkv `
             --language 0:spa `
             --track-name "0:$SpanishTitle TV-safe" `
@@ -141,7 +230,7 @@ Invoke-Checked {
     else {
         & $mkvMergePath `
             --output $OutputMkv `
-            --default-track-flag 3:no `
+            --default-track-flag "$SourceMkvTrackId`:no" `
             $InputMkv `
             --language 0:spa `
             --track-name "0:$SpanishTitle" `

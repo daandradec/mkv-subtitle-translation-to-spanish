@@ -22,9 +22,15 @@ WORD_REPLACEMENTS = [
     (r"\bpod\?a\b", "podía"),
     (r"\bm\?s\b", "más"),
     (r"\best\?n\b", "están"),
+    (r"\bEstan\b", "Están"),
+    (r"\bestan\b", "están"),
+    (r"\btermin\?", "terminó"),
     (r"\?no\?", "¿no?"),
+    (r"\?verdad\?", "¿verdad?"),
     (r"\bSe que\b", "Sé que"),
     (r"\bse que\b", "sé que"),
+    (r"\blo se\b", "lo sé"),
+    (r"\bLo se\b", "Lo sé"),
     (r"\bTu y yo\b", "Tú y yo"),
     (r"\btu y yo\b", "tú y yo"),
     (r"\bdia\b", "día"),
@@ -34,6 +40,8 @@ WORD_REPLACEMENTS = [
     (r"\bcorazon\b", "corazón"),
     (r"\bcorazones\b", "corazones"),
     (r"\bCorazon\b", "Corazón"),
+    (r"\bsuenos\b", "sueños"),
+    (r"\bSuenos\b", "Sueños"),
     (r"\bcancion\b", "canción"),
     (r"\bcanciones\b", "canciones"),
     (r"\bemocion\b", "emoción"),
@@ -59,12 +67,16 @@ WORD_REPLACEMENTS = [
     (r"\bAun\b", "Aún"),
     (r"\btodavia\b", "todavía"),
     (r"\bTodavia\b", "Todavía"),
+    (r"\bquiza\b", "quizá"),
+    (r"\bQuiza\b", "Quizá"),
     (r"\bunico\b", "único"),
     (r"\bUnico\b", "Único"),
     (r"\bunica\b", "única"),
     (r"\bUnica\b", "Única"),
     (r"\bmelodia\b", "melodía"),
     (r"\bMelodia\b", "Melodía"),
+    (r"\bmanana\b", "mañana"),
+    (r"\bManana\b", "Mañana"),
     (r"\bsonreir\b", "sonreír"),
     (r"\boir\b", "oír"),
     (r"\bDejame\b", "Déjame"),
@@ -74,6 +86,14 @@ WORD_REPLACEMENTS = [
     (r"\bquedare\b", "quedaré"),
     (r"\bseguira\b", "seguirá"),
     (r"\bSeguira\b", "Seguirá"),
+    (r"\bseran\b", "serán"),
+    (r"\bSeran\b", "Serán"),
+    (r"\bseria\b", "sería"),
+    (r"\bSeria\b", "Sería"),
+    (r"\bharia\b", "haría"),
+    (r"\bHaria\b", "Haría"),
+    (r"\bdificil\b", "difícil"),
+    (r"\bDificil\b", "Difícil"),
     (r"\bempezo\b", "empezó"),
     (r"\bEmpezo\b", "Empezó"),
     (r"\baparto\b", "apartó"),
@@ -87,7 +107,19 @@ WORD_REPLACEMENTS = [
     (r"\bEsta fuera\b", "Está fuera"),
     (r"\besta bien\b", "está bien"),
     (r"\bEsta bien\b", "Está bien"),
+    (r"\bEsta justo\b", "Está justo"),
     (r"\bestas ahi\b", "estás ahí"),
+    (r"\bSabias\?", "¿Sabías?"),
+    (r"\bsabias\?", "¿sabías?"),
+    (r"\bListos\?", "¿Listos?"),
+    (r"\blistos\?", "¿listos?"),
+    (r"\bsabes\?", "¿sabes?"),
+    (r"\bOye, recuerdas cuando miramos el cielo\?", "Oye, ¿recuerdas cuando miramos el cielo?"),
+    (r"\bQuizá todo sería más simple\?\?", "¿Quizá todo sería más simple?"),
+    (r"\bNo te haría todo más difícil\?", "¿No te haría todo más difícil?"),
+    (r", como serán mañana\?", ", ¿cómo serán mañana?"),
+    (r"\bAún falta más!", "¡Aún falta más!"),
+    (r"\bNo termino!", "¡No termino!"),
 ]
 
 
@@ -97,6 +129,8 @@ def normalize_spanish_text(text):
         normalized = re.sub(pattern, replacement, normalized)
     if normalized.startswith("?") and normalized.endswith("!"):
         normalized = "¡" + normalized[1:]
+    normalized = re.sub(r"¿{2,}", "¿", normalized)
+    normalized = re.sub(r"¡{2,}", "¡", normalized)
     normalized = re.sub(r"[ \t]+", " ", normalized)
     normalized = re.sub(r" *\n *", "\n", normalized)
     return normalized.strip()

@@ -6,8 +6,8 @@ This module is intentionally standalone so existing ASS-oriented workflow stages
 consume SRT/VTT input tracks after extraction without changing their parser contracts.
 
 Example:
-    python subtitle_text_to_ass.py --input input.srt --output subtitle_work/input.ass
-    python subtitle_text_to_ass.py --input input.vtt --output subtitle_work/input.ass --format vtt
+    python src/subtitle_text_to_ass.py --input input.srt --output subtitle_work/input.ass
+    python src/subtitle_text_to_ass.py --input input.vtt --output subtitle_work/input.ass --format vtt
 """
 
 import argparse

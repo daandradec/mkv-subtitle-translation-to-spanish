@@ -37,16 +37,23 @@ C:\Program Files\MKVToolNix
 
 ## Archivos Principales
 
-- `traducir_subs_mkv.ps1`: orquesta todo el flujo.
-- `ass_apply_translations.py`: aplica las traducciones sobre el ASS sin cambiar tiempos.
-- `ass_to_tv_safe_srt.py`: crea un SRT limpio sin tags ASS, dibujos vectoriales ni efectos karaoke.
-- `normalize_spanish_subtitles.py`: normaliza el texto visible del ASS y regenera el SRT TV-safe desde el ASS normalizado.
-- `subtitle_text_to_ass.py`: convierte subtitulos extraidos `.srt`, `.vtt` o `.webvtt` a un ASS simple para que puedan entrar a etapas que esperan ASS.
-- `test_spanish_normalization.py`: pruebas unitarias de la fase de normalizacion.
+- `src\traducir_subs_mkv.ps1`: orquesta todo el flujo.
+- `src\ass_apply_translations.py`: aplica las traducciones sobre el ASS sin cambiar tiempos.
+- `src\ass_to_tv_safe_srt.py`: crea un SRT limpio sin tags ASS, dibujos vectoriales ni efectos karaoke.
+- `src\normalize_spanish_subtitles.py`: normaliza el texto visible del ASS y regenera el SRT TV-safe desde el ASS normalizado.
+- `src\subtitle_text_to_ass.py`: convierte subtitulos extraidos `.srt`, `.vtt` o `.webvtt` a un ASS simple para que puedan entrar a etapas que esperan ASS.
+- `src\subtitle_language.py` y `src\languages\`: validan que la pista fuente este en la lista de idiomas soportados.
+- `src\test_*.py`: pruebas unitarias.
 - `translations\translations_*.json`: mapas de traduccion locales. Esta carpeta esta ignorada por Git y no se sube al repositorio.
 - `.gitignore`: excluye videos, subtitulos extraidos, caches y temporales.
 
 El video fuente y el MKV final no se versionan. Por defecto, coloca entradas en `input/` y revisa resultados en `output/`.
+
+Validaciones de entrada:
+
+- Si `input/` no contiene ningun MKV y no indicas `-InputMkv`, el flujo se detiene. Un archivo de video `.mkv` con subtitulos incrustados es obligatorio para ejecutar la traduccion.
+- Si `input/` contiene varios MKV, el flujo no elige automaticamente. Debes indicar exactamente un archivo con `-InputMkv`.
+- Si el MKV seleccionado no tiene subtitulos incrustados, el flujo se detiene y avisa que no se encontraron subtitulos en el archivo original para traducir a espanol.
 
 ## Flujo Principal con PowerShell
 
@@ -59,7 +66,7 @@ input\Love Live! Nijigasaki High School Idol Club the Movie - Chapter 2 [BD 1080
 Luego ejecuta:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\traducir_subs_mkv.ps1 `
+powershell -ExecutionPolicy Bypass -File .\src\traducir_subs_mkv.ps1 `
   -InputMkv ".\input\Love Live! Nijigasaki High School Idol Club the Movie - Chapter 2 [BD 1080p HEVC OPUS] [34C012E9].mkv" `
   -SpanishAss ".\output\Love Live! Nijigasaki High School Idol Club the Movie - Chapter 2 [BD 1080p HEVC OPUS] [34C012E9].spa.ass" `
   -TvSafeSrt ".\output\Love Live! Nijigasaki High School Idol Club the Movie - Chapter 2 [BD 1080p HEVC OPUS] [34C012E9].spa.srt" `
@@ -87,12 +94,30 @@ output\Love Live! Nijigasaki High School Idol Club the Movie - Chapter 2 [BD 108
 
 Este flujo actual esta preparado para el caso ya trabajado: MKV con pista ASS fuente en `0:3` y mapas de traduccion existentes. Para otros idiomas, otras pistas o subtitulos SRT/VTT incrustados, usa primero la inspeccion con agentes o los scripts auxiliares descritos abajo.
 
+## Idiomas Fuente Soportados
+
+El flujo solo permite traducir hacia espanol desde estos idiomas fuente:
+
+1. Ingles
+2. Chino mandarin
+3. Hindi
+4. Portugues
+5. Frances
+6. Ruso
+7. Aleman
+8. Japones
+9. Chino Wu (Shanghaines)
+10. Coreano
+11. Italiano
+
+Si la metadata de la pista de subtitulos indica otro idioma, `src\traducir_subs_mkv.ps1` detiene la ejecucion y muestra la lista disponible. Para ingles se conserva el comportamiento actual con mapas locales en `translations\`. Para los otros idiomas soportados, la ruta recomendada es usar la skill con subagentes para generar mapas JSON locales en `translations\<video>\<idioma>\` y luego pasarlos al script con `-TranslationJson`.
+
 ## Uso con Otros Nombres
 
 Puedes pasar rutas personalizadas:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\traducir_subs_mkv.ps1 `
+powershell -ExecutionPolicy Bypass -File .\src\traducir_subs_mkv.ps1 `
   -InputMkv ".\entrada.mkv" `
   -EnglishAss ".\subtitle_work\entrada.eng.ass" `
   -SpanishAss ".\output\entrada.spa.ass" `
@@ -107,10 +132,13 @@ Si usas otro MKV, revisa primero el indice de la pista de subtitulos con:
 ffprobe -hide_banner -i ".\entrada.mkv"
 ```
 
-El script actual extrae la pista `0:3`. Si tu archivo usa otra pista, cambia esta linea en `traducir_subs_mkv.ps1`:
+El script actual extrae la pista `0:3` y desactiva el track `3` de mkvmerge por defecto. Si tu archivo usa otra pista, pasa `-SourceSubtitleStreamIndex` y, cuando el track ID de mkvmerge sea distinto, `-SourceMkvTrackId`:
 
 ```powershell
-ffmpeg -y -v error -i $InputMkv -map 0:3 -c:s copy $EnglishAss
+powershell -ExecutionPolicy Bypass -File .\src\traducir_subs_mkv.ps1 `
+  -InputMkv ".\input\entrada.mkv" `
+  -SourceSubtitleStreamIndex 4 `
+  -SourceMkvTrackId 4
 ```
 
 ## Flujo por Scripts Python
@@ -144,7 +172,7 @@ El indice real puede variar; usa el resultado de `ffprobe`.
 Cuando la pista fuente extraida sea `.srt`, `.vtt` o `.webvtt`, conviertela a ASS simple:
 
 ```powershell
-python .\subtitle_text_to_ass.py `
+python .\src\subtitle_text_to_ass.py `
   --input ".\subtitle_work\entrada.srt" `
   --output ".\subtitle_work\entrada.ass"
 ```
@@ -152,7 +180,7 @@ python .\subtitle_text_to_ass.py `
 Para VTT:
 
 ```powershell
-python .\subtitle_text_to_ass.py `
+python .\src\subtitle_text_to_ass.py `
   --input ".\subtitle_work\entrada.vtt" `
   --output ".\subtitle_work\entrada.ass" `
   --format vtt
@@ -163,7 +191,7 @@ Este modulo preserva tiempos, limpia marcas comunes de SRT/VTT y genera eventos 
 ### 3. Aplicar Mapas de Traduccion
 
 ```powershell
-python .\ass_apply_translations.py `
+python .\src\ass_apply_translations.py `
   --input-ass ".\subtitle_work\entrada.ass" `
   --output-ass ".\output\entrada.spa.ass" `
   --translations .\translations\translations_dialogue_part1.json .\translations\translations_dialogue_part2.json .\translations\translations_signs.json .\translations\translations_songs.json .\translations\translations_songs_extra.json `
@@ -175,7 +203,7 @@ Los mapas actuales pertenecen al video trabajado en este repositorio. Para otro 
 ### 4. Generar SRT TV-Safe
 
 ```powershell
-python .\ass_to_tv_safe_srt.py `
+python .\src\ass_to_tv_safe_srt.py `
   --input-ass ".\output\entrada.spa.ass" `
   --output-srt ".\output\entrada.spa.srt"
 ```
@@ -183,7 +211,7 @@ python .\ass_to_tv_safe_srt.py `
 ### 5. Normalizar Espanol
 
 ```powershell
-python .\normalize_spanish_subtitles.py `
+python .\src\normalize_spanish_subtitles.py `
   --input-ass ".\output\entrada.spa.ass" `
   --input-srt ".\output\entrada.spa.srt" `
   --output-ass ".\output\entrada.spa.ass" `
@@ -227,7 +255,7 @@ Con la skill, el agente principal debe coordinar subagentes para:
 
 - inspeccionar el contenedor y elegir la pista fuente correcta;
 - decidir si la pista es ASS, SRT, VTT u otro formato;
-- convertir SRT/VTT a ASS con `subtitle_text_to_ass.py` cuando haga falta;
+- convertir SRT/VTT a ASS con `src\subtitle_text_to_ass.py` cuando haga falta;
 - segmentar semanticamente dialogos, signos y canciones;
 - traducir o aplicar mapas de traduccion disponibles;
 - revisar naturalidad en espanol latino;
@@ -260,7 +288,7 @@ El aplicador conserva tiempos, estilos, orden de eventos y tags ASS iniciales. P
 
 ## Normalizacion de Espanol
 
-Despues de generar el ASS y el SRT, el flujo ejecuta `normalize_spanish_subtitles.py` salvo que pases `-SkipSpanishNormalization`.
+Despues de generar el ASS y el SRT, el flujo ejecuta `src\normalize_spanish_subtitles.py` salvo que pases `-SkipSpanishNormalization`.
 
 La normalizacion:
 
@@ -273,7 +301,7 @@ La normalizacion:
 Puedes correr las pruebas unitarias con:
 
 ```powershell
-python -m unittest .\test_spanish_normalization.py
+python -m unittest .\src\test_spanish_normalization.py .\src\test_language_profiles.py
 ```
 
 ## Notas

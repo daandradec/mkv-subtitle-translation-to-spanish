@@ -2,6 +2,8 @@
 
 Use these roles as separate subagents whenever the task is large enough to benefit from parallel work. Each subagent must receive concrete input paths and produce structured artifacts.
 
+Do not create all roles at once. The main agent should run roles in dependency-aware batches, keep no more than two active subagents, wait for each batch to finish, integrate the returned artifact, and close completed subagents before launching later roles.
+
 ## Container Inspector
 
 - Inputs: source MKV path, tool availability.
@@ -40,4 +42,4 @@ Use these roles as separate subagents whenever the task is large enough to benef
 
 ## Main Agent Integration
 
-The main agent integrates all subagent outputs, resolves conflicts, writes final subtitle files, remuxes with `mkvmerge`, runs tests, and prepares the final user summary.
+The main agent integrates all subagent outputs, resolves conflicts, writes final subtitle files, remuxes with `mkvmerge`, runs tests, closes no-longer-needed subagents, and prepares the final user summary. If no subagent slot is available after closing completed agents, the main agent performs the blocked role locally and documents the fallback.

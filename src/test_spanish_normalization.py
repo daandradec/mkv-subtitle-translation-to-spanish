@@ -1,6 +1,9 @@
 import tempfile
 import unittest
+import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from normalize_spanish_subtitles import normalize_files, normalize_spanish_text, parse_srt
 
@@ -25,6 +28,25 @@ class SpanishNormalizationTests(unittest.TestCase):
         self.assertEqual(
             normalize_spanish_text(text),
             "Sé que tú y yo estaremos aquí más días con el corazón y la pasión",
+        )
+
+    def test_normalize_mojibake_question_and_song_accents(self):
+        text = (
+            "Ese evento termin?, ?verdad?\n"
+            "Quiza seria dificil. Los suenos seran manana?\n"
+            "Quiza todo seria más simple??\n"
+            "No te haria todo más dificil?\n"
+            "¡¡Aún falta más! ¿¿No termino?\n"
+            "Estan ahí, lo se"
+        )
+        self.assertEqual(
+            normalize_spanish_text(text),
+            "Ese evento terminó, ¿verdad?\n"
+            "Quizá sería difícil. Los sueños serán mañana?\n"
+            "¿Quizá todo sería más simple?\n"
+            "¿No te haría todo más difícil?\n"
+            "¡Aún falta más! ¿No termino?\n"
+            "Están ahí, lo sé",
         )
 
     def test_normalize_files_preserves_overlapping_cues(self):

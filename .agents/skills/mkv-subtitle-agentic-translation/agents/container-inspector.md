@@ -15,9 +15,12 @@ Spawn this subagent before extraction or translation, especially when the source
 
 ## Tasks
 
+- Verify `/input` contains at least one MKV, or that the user-provided MKV path/name exists.
+- If multiple MKVs are present in `/input`, require the main agent to provide exactly one selected input for this run; never choose silently.
 - Run `ffprobe` or equivalent inspection.
 - List video, audio, subtitle, attachment, and chapter streams.
 - Detect subtitle languages, codecs, default flags, titles, and durations.
+- Report "No se encontraron subtítulos incrustados en el archivo original para traducir a español." when the selected MKV has no subtitle streams.
 - Recommend the source subtitle stream(s) to process.
 - Identify risks such as PGS/image subtitles, missing fonts, multiple editions, or absent language metadata.
 
