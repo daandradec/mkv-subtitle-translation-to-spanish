@@ -15,6 +15,7 @@ output/
 *.srt
 *.vtt
 subtitle_work/
+translations/
 
 # PRD drafts/generated variants; keep the canonical root PRD.
 PRD*.md

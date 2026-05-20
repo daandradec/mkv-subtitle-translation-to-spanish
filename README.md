@@ -43,7 +43,7 @@ C:\Program Files\MKVToolNix
 - `normalize_spanish_subtitles.py`: normaliza el texto visible del ASS y regenera el SRT TV-safe desde el ASS normalizado.
 - `subtitle_text_to_ass.py`: convierte subtitulos extraidos `.srt`, `.vtt` o `.webvtt` a un ASS simple para que puedan entrar a etapas que esperan ASS.
 - `test_spanish_normalization.py`: pruebas unitarias de la fase de normalizacion.
-- `translations\translations_*.json`: mapas de traduccion.
+- `translations\translations_*.json`: mapas de traduccion locales. Esta carpeta esta ignorada por Git y no se sube al repositorio.
 - `.gitignore`: excluye videos, subtitulos extraidos, caches y temporales.
 
 El video fuente y el MKV final no se versionan. Por defecto, coloca entradas en `input/` y revisa resultados en `output/`.
