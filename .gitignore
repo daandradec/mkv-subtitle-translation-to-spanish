@@ -1,0 +1,56 @@
+# Large media inputs/outputs
+*.mkv
+*.mp4
+*.mov
+*.avi
+*.webm
+*.m4v
+*.ts
+*.m2ts
+
+# Extracted/generated subtitles and working artifacts
+*.ass
+*.srt
+*.vtt
+subtitle_work/
+
+# Local tools and downloaded installers/packages
+tools/
+*.exe
+*.msi
+*.zip
+*.7z
+*.rar
+*.tar
+*.gz
+*.nupkg
+
+# Python/runtime caches
+__pycache__/
+*.py[cod]
+.python-version
+.venv/
+venv/
+env/
+
+# Logs, debug output, and temp files
+*.log
+*.tmp
+*.temp
+*.bak
+*.old
+*.orig
+*.rej
+debug/
+tmp/
+temp/
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
