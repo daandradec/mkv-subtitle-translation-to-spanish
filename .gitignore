@@ -7,12 +7,19 @@
 *.m4v
 *.ts
 *.m2ts
+input/
+output/
 
 # Extracted/generated subtitles and working artifacts
 *.ass
 *.srt
 *.vtt
 subtitle_work/
+
+# PRD drafts/generated variants; keep the canonical root PRD.
+PRD*.md
+prd/
+!PRD.md
 
 # Local tools and downloaded installers/packages
 tools/

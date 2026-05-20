@@ -1,0 +1,25 @@
+subagents:
+  - id: container_inspector
+    name: "Container Inspector"
+    purpose: "Inspect MKV streams, subtitle codecs, language metadata, attachments, and tool availability."
+    output: "stream_inventory.md or stream_inventory.json"
+  - id: semantic_segmenter
+    name: "Semantic Segmenter"
+    purpose: "Parse subtitle files and group adjacent events into complete semantic units before translation."
+    output: "semantic_units.json"
+  - id: dialogue_translator
+    name: "Dialogue Translator"
+    purpose: "Translate grouped dialogue and signs into concise Spanish LatAm."
+    output: "dialogue_translations.json"
+  - id: song_translator_reviewer
+    name: "Song Translator and Reviewer"
+    purpose: "Reconstruct full lyric lines, reject ASS effect garbage, and translate only reliable song text."
+    output: "song_translations.json and omitted_song_intervals.json"
+  - id: spanish_linguistic_reviewer
+    name: "Spanish LatAm Linguistic Reviewer"
+    purpose: "Review merged translations for natural syntax, terminology, continuity, and subtitle readability."
+    output: "reviewed_translations.json"
+  - id: technical_validator
+    name: "Technical Validator"
+    purpose: "Validate generated subtitles, TV-safe output, remuxed MKV metadata, and extracted final Spanish text."
+    output: "validation_report.md"

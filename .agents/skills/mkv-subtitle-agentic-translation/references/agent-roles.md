@@ -1,0 +1,43 @@
+# Agent Roles
+
+Use these roles as separate subagents whenever the task is large enough to benefit from parallel work. Each subagent must receive concrete input paths and produce structured artifacts.
+
+## Container Inspector
+
+- Inputs: source MKV path, tool availability.
+- Tasks: run `ffprobe`, list video/audio/subtitle streams, detect subtitle codecs/languages, identify attachments/fonts, and recommend source subtitle track.
+- Output: JSON or markdown summary with selected track, rationale, and risks.
+
+## Semantic Segmenter
+
+- Inputs: extracted subtitle file.
+- Tasks: parse subtitle format, extract visible text, group adjacent events into complete sentences or semantic blocks, and preserve source event IDs/times.
+- Output: grouped units with source IDs, time ranges, original text, style/effect metadata, and grouping confidence.
+
+## Dialogue Translator
+
+- Inputs: grouped non-song dialogue/sign units.
+- Tasks: translate to natural Spanish LatAm, preserving names, honorific policy, intent, and subtitle brevity.
+- Output: structured translations keyed by group ID, with notes for ambiguous lines.
+
+## Song Translator and Reviewer
+
+- Inputs: grouped song/lyric units and ASS effect metadata.
+- Tasks: reconstruct complete lyric lines, reject drawing/effect fragments, translate only reliable lyrics, and mark unsafe intervals as omit.
+- Output: translated lyric groups plus omitted intervals and reasons.
+
+## Spanish LatAm Linguistic Reviewer
+
+- Inputs: all translated units.
+- Tasks: normalize tone, syntax, punctuation, terminology, and continuity across grouped lines.
+- Output: reviewed translations plus required fixes.
+
+## Technical Validator
+
+- Inputs: generated subtitle files and final MKV.
+- Tasks: validate stream metadata, default flags, extracted final subtitles, timing counts, TV-safe output, and absence of visible ASS commands or numeric path garbage.
+- Output: pass/fail report with exact failing timestamps and file paths.
+
+## Main Agent Integration
+
+The main agent integrates all subagent outputs, resolves conflicts, writes final subtitle files, remuxes with `mkvmerge`, runs tests, and prepares the final user summary.
