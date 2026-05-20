@@ -63,6 +63,13 @@ def has_drawing_mode(raw):
     return bool(re.search(r"\\p[1-9]", raw))
 
 
+def looks_like_placeholder(text):
+    compact = re.sub(r"\s+", "", text).lower()
+    if len(compact) < 8:
+        return False
+    return len(set(compact)) == 1
+
+
 def is_skippable(style, effect, raw, text):
     style_lower = style.lower()
     effect_lower = effect.lower()
@@ -73,6 +80,8 @@ def is_skippable(style, effect, raw, text):
     if has_drawing_mode(raw) or looks_like_vector_path(text):
         return True
     if not text:
+        return True
+    if looks_like_placeholder(text):
         return True
     alnum = re.findall(r"[^\W_]", text, flags=re.UNICODE)
     digits = re.findall(r"\d", text)

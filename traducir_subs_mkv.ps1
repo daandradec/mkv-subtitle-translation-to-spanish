@@ -3,15 +3,17 @@ param(
     [string]$EnglishAss = "subtitle_work\Love Live! Nijigasaki High School Idol Club the Movie - Chapter 2 [BD 1080p HEVC OPUS] [34C012E9].eng.ass",
     [string]$SpanishAss = "subtitle_work\Love Live! Nijigasaki High School Idol Club the Movie - Chapter 2 [BD 1080p HEVC OPUS] [34C012E9].spa.ass",
     [string]$TvSafeSrt = "",
+    [string]$NormalizationReport = "subtitle_work\spanish_normalization_report.json",
+    [switch]$SkipSpanishNormalization,
     [ValidateSet("ass", "srt", "both")]
     [string]$EmbeddedSubtitleFormat = "both",
     [string]$OutputMkv = "Love Live! Nijigasaki High School Idol Club the Movie - Chapter 2 [BD 1080p HEVC OPUS] [34C012E9].spa.mkv",
     [string[]]$TranslationJson = @(
-        "translations_dialogue_part1.json",
-        "translations_dialogue_part2.json",
-        "translations_signs.json",
-        "translations_songs.json",
-        "translations_songs_extra.json"
+        "translations\translations_dialogue_part1.json",
+        "translations\translations_dialogue_part2.json",
+        "translations\translations_signs.json",
+        "translations\translations_songs.json",
+        "translations\translations_songs_extra.json"
     )
 )
 
@@ -53,6 +55,13 @@ if ($TvSafeSrt) {
     }
 }
 
+if ($NormalizationReport) {
+    $normalizationReportDir = Split-Path -Parent $NormalizationReport
+    if ($normalizationReportDir -and !(Test-Path -LiteralPath $normalizationReportDir)) {
+        New-Item -ItemType Directory -Path $normalizationReportDir | Out-Null
+    }
+}
+
 Write-Host "Extracting English ASS subtitle stream 0:3..."
 Invoke-Checked { ffmpeg -y -v error -i $InputMkv -map 0:3 -c:s copy $EnglishAss }
 
@@ -82,6 +91,18 @@ if ($TvSafeSrt) {
         python ".\ass_to_tv_safe_srt.py" `
             --input-ass $SpanishAss `
             --output-srt $TvSafeSrt
+    }
+}
+
+if ($TvSafeSrt -and !$SkipSpanishNormalization) {
+    Write-Host "Normalizing Spanish ASS and TV-safe SRT..."
+    Invoke-Checked {
+        python ".\normalize_spanish_subtitles.py" `
+            --input-ass $SpanishAss `
+            --input-srt $TvSafeSrt `
+            --output-ass $SpanishAss `
+            --output-srt $TvSafeSrt `
+            --report $NormalizationReport
     }
 }
 

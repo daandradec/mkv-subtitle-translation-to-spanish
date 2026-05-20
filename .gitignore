@@ -20,6 +20,7 @@ subtitle_work/
 PRD*.md
 prd/
 !PRD.md
+!PRD-spanish-normalization.md
 
 # Local tools and downloaded installers/packages
 tools/
