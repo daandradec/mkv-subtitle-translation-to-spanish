@@ -52,6 +52,7 @@ Read only the references needed for the current task:
    - If `/input` has no MKV files and the user did not provide a valid MKV path, stop immediately and say: "No se encontró ningún video MKV en la carpeta `input`. Para ejecutar este flujo es obligatorio ubicar un archivo de video `.mkv` con subtítulos incrustados en `input/` o indicar la ruta exacta del archivo."
    - If `/input` has multiple MKV files, do not choose one automatically. The workflow can process only one video per run, so require exactly one input MKV path/name and verify that it exists.
    - If an input name/path is provided, verify that it resolves to one existing `.mkv` file before spawning subagents.
+   - The user may optionally provide a subtitle stream index. Pass it to `src/traducir_subs_mkv.ps1` as `-SourceSubtitleStreamIndex <ffprobe-index>` and use that exact track as the source.
 2. Initialize the local Python 3.12 environment before running Python helpers. If Python 3.12 is missing, stop and tell the user to install it before continuing.
 3. Create dedicated per-video workspaces before extraction:
    - Use the same workspace id for `subtitle_work/<workspace-id>/`, `translations/<workspace-id>/`, and `output/<workspace-id>/`.
@@ -60,9 +61,11 @@ Read only the references needed for the current task:
    - Do not write run-specific files directly under `subtitle_work/`, `translations/`, or `output/`.
 4. Create `output/<workspace-id>/` for final deliverables and use the per-video `subtitle_work/<workspace-id>/` for intermediates.
 5. Spawn subagents in lifecycle-controlled batches. Wait for each batch, integrate its artifacts, and close completed agents before creating the next batch.
-6. Validate that the input MKV has embedded text subtitles and a supported source language with `src/subtitle_language.py`. If no subtitles are found, stop immediately and tell the user: "No se encontraron subtítulos incrustados en el archivo original, por lo que este flujo no puede traducirlo a español. Cuando quieras crear subtítulos desde el audio del video, usa la skill `mkv-subtitle-agentic-transcription`, que estará orientada a transcribir las voces y generar subtítulos base para un flujo posterior de traducción."
+6. Validate that the input MKV has embedded text subtitles and a supported source language with `src/subtitle_language.py`. If no subtitles are found, stop immediately and tell the user: "No se encontraron subtítulos incrustados en el archivo original, por lo que este flujo no puede traducirlo a español. Cuando quieras crear subtítulos desde el audio del video, usa la skill `video-subtitle-agentic-transcription`, que estará orientada a transcribir las voces y generar un MKV con subtítulos base para un flujo posterior de traducción."
    Continue only for English, Mandarin Chinese, Hindi, Portuguese, French, Russian, German, Japanese, Wu Chinese/Shanghainese, Korean, or Italian.
-   - If several subtitle tracks are supported, do not blindly use the first one. Prefer complete text tracks over `Forced`, prefer non-CC over CC unless requested, prefer larger event coverage/duration, and prefer the likely original/source-language track when metadata makes it clear.
+   - If the user provided `-SourceSubtitleStreamIndex`, use that exact subtitle stream after validating that it is textual and language-supported.
+   - If no subtitle stream index is provided, use the default embedded subtitle track when it is textual and language-supported.
+   - If there is no usable default subtitle track, do not blindly use the first one. Prefer complete text tracks over `Forced`, prefer non-CC over CC unless requested, prefer larger event coverage/duration, and prefer the likely original/source-language track when metadata makes it clear.
    - Report the selected `ffprobe` stream index and mkvmerge track id.
 7. Extract subtitle streams with `ffmpeg`/`ffprobe`; remux final MKV with `mkvmerge`.
    - ASS input can enter the pipeline directly.

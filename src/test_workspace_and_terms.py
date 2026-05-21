@@ -1,10 +1,13 @@
 import sys
 import unittest
+import json
+import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from subtitle_workspace import build_workspace, make_workspace_id, semantic_prefix
+from normalize_translation_maps import sanitize_map
 from translation_maps import find_translation_maps
 from translation_terms import apply_terms, load_term_maps
 
@@ -44,8 +47,6 @@ class WorkspaceAndTermsTests(unittest.TestCase):
         self.assertEqual(apply_terms(mojibake, terms), "Nagao Buton ordenÃ³ avanzar hacia Kanazawa y Yamato.")
 
     def test_translation_maps_resolve_per_workspace_language(self):
-        import tempfile
-
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
             language_dir = base / "en"
@@ -57,8 +58,6 @@ class WorkspaceAndTermsTests(unittest.TestCase):
             self.assertEqual(find_translation_maps(base, "en"), [first, second])
 
     def test_translation_maps_prefer_combined_file(self):
-        import tempfile
-
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
             language_dir = base / "ja"
@@ -68,6 +67,24 @@ class WorkspaceAndTermsTests(unittest.TestCase):
             all_maps.write_text('{"1":"Uno"}', encoding="utf-8")
             chunk.write_text('{"2":"Dos"}', encoding="utf-8")
             self.assertEqual(find_translation_maps(base, "ja"), [all_maps])
+
+    def test_translation_map_sanitizer_repairs_mojibake_before_apply(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / "translations_all.json"
+            output = root / "sanitized" / "translations_all.json"
+            source.write_text(
+                '{"16": "?Es... escrita de su mano! Demasi?ado sublime...", '
+                '"17": "Esta guerra a?n est? en marcha."}',
+                encoding="utf-8",
+            )
+
+            report = sanitize_map(source, output)
+            data = json.loads(output.read_text(encoding="utf-8"))
+
+            self.assertEqual(data["16"], "¡Es... escrita de su mano! Demasiado sublime...")
+            self.assertEqual(data["17"], "Esta guerra aún está en marcha.")
+            self.assertEqual(report["suspicious_question_replacement_count"], 0)
 
 
 if __name__ == "__main__":

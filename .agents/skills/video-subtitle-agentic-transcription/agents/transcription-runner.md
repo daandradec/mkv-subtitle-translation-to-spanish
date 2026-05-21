@@ -8,13 +8,14 @@ Run the local transcription backend and produce raw SRT/JSON outputs.
 
 - Extracted WAV path.
 - Workspace paths.
-- Backend policy and optional language.
+- Backend policy, optional `-AudioStreamIndex`, and optional language.
 
 ## Tasks
 
 - Prefer WhisperX from `.venv/Scripts`.
 - If WhisperX is missing after local setup, use `openai-whisper` from `.venv/Scripts` and include the fallback warning.
 - Run transcription only, never translation.
+- Pass the resolved language from the selected audio stream to WhisperX/Whisper when the user did not provide `-Language`.
 - Keep raw backend outputs in `subtitle_work/<workspace-id>/whisper/`.
 - Do not install packages globally or require API keys.
 

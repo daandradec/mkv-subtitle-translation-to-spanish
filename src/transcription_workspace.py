@@ -6,9 +6,9 @@ from pathlib import Path
 from subtitle_workspace import make_workspace_id
 
 
-def build_transcription_workspace(input_mkv, workspace_id=""):
-    workspace_id = workspace_id or make_workspace_id(input_mkv)
-    stem = Path(input_mkv).stem
+def build_transcription_workspace(input_video, workspace_id=""):
+    workspace_id = workspace_id or make_workspace_id(input_video)
+    stem = Path(input_video).stem
     subtitle_work_dir = Path("subtitle_work") / workspace_id
     output_dir = Path("output") / workspace_id
     whisper_output_dir = subtitle_work_dir / "whisper"
@@ -28,12 +28,12 @@ def build_transcription_workspace(input_mkv, workspace_id=""):
 
 def main():
     parser = argparse.ArgumentParser(description="Create per-run transcription workspace paths.")
-    parser.add_argument("--input-mkv", required=True)
+    parser.add_argument("--input-video", "--input-mkv", dest="input_video", required=True)
     parser.add_argument("--workspace-id", default="")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
 
-    payload = build_transcription_workspace(args.input_mkv, args.workspace_id)
+    payload = build_transcription_workspace(args.input_video, args.workspace_id)
     if args.json:
         print(json.dumps(payload, ensure_ascii=False, indent=2))
     else:

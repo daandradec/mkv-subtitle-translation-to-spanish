@@ -20,8 +20,10 @@ Spawn this subagent before extraction or translation, especially when the source
 - Run `ffprobe` or equivalent inspection.
 - List video, audio, subtitle, attachment, and chapter streams.
 - Detect subtitle languages, codecs, default flags, titles, and durations.
-- When the selected MKV has no subtitle streams, report: "No se encontraron subtítulos incrustados en el archivo original, por lo que este flujo no puede traducirlo a español. Cuando quieras crear subtítulos desde el audio del video, usa la skill `mkv-subtitle-agentic-transcription`, que estará orientada a transcribir las voces y generar subtítulos base para un flujo posterior de traducción."
-- Recommend exactly one source subtitle stream for the run unless the user must decide. Exclude `Forced` tracks when complete tracks exist, avoid CC/SDH unless requested, prefer higher event count/duration, and prefer the likely original/source-language track when metadata supports it.
+- When the selected MKV has no subtitle streams, report: "No se encontraron subtítulos incrustados en el archivo original, por lo que este flujo no puede traducirlo a español. Cuando quieras crear subtítulos desde el audio del video, usa la skill `video-subtitle-agentic-transcription`, que estará orientada a transcribir las voces y generar un MKV con subtítulos base para un flujo posterior de traducción."
+- If the user provided a subtitle stream index, validate that exact stream and recommend it unless it is non-textual or unsupported.
+- If the user did not provide a subtitle stream index, recommend the default embedded subtitle track when it is textual and language-supported.
+- If there is no usable default subtitle track, recommend exactly one source subtitle stream for the run unless the user must decide. Exclude `Forced` tracks when complete tracks exist, avoid CC/SDH unless requested, prefer higher event count/duration, and prefer the likely original/source-language track when metadata supports it.
 - Return both the ffprobe stream index and mkvmerge track id for the selected subtitle track.
 - Identify risks such as PGS/image subtitles, missing fonts, multiple editions, or absent language metadata.
 

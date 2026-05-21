@@ -1,5 +1,6 @@
 param(
-    [string]$InputMkv = "",
+    [Alias("InputMkv")]
+    [string]$InputVideo = "",
     [string]$WorkspaceId = "",
     [int]$AudioStreamIndex = -1,
     [string]$Language = "",
@@ -10,6 +11,8 @@ param(
     [string]$Device = "cuda",
     [string]$ComputeType = "float16",
     [int]$BatchSize = 8,
+    [int]$MaxSubtitleLines = 2,
+    [int]$MaxSubtitleLineChars = 52,
     [bool]$Fp16 = $true,
     [switch]$SkipRemux,
     [switch]$DryRun
@@ -33,9 +36,15 @@ function Invoke-Checked {
 }
 
 function Initialize-PythonEnvironment {
+    $setupArgs = @(
+        "-ProjectRoot", $ProjectRoot,
+        "-Json"
+    )
+    if ($Device -eq "cuda") {
+        $setupArgs += "-EnsureCudaTorch"
+    }
     $envJson = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $ScriptDir "init_python_env.ps1") `
-        -ProjectRoot $ProjectRoot `
-        -Json
+        @setupArgs
     if ($LASTEXITCODE -ne 0) {
         throw "Python environment initialization failed."
     }
@@ -56,27 +65,44 @@ function Resolve-ProjectPath {
     return (Join-Path $ProjectRoot $PathValue)
 }
 
-function Get-InputMkvCandidates {
+function Get-InputVideoCandidates {
     if (!(Test-Path -LiteralPath $InputDir)) {
         return @()
     }
-    return @(Get-ChildItem -LiteralPath $InputDir -Filter "*.mkv" -File)
+    $candidates = @()
+    foreach ($file in (Get-ChildItem -LiteralPath $InputDir -File)) {
+        $probeJson = & ffprobe -v error `
+            -show_entries stream=index,codec_type `
+            -of json `
+            $file.FullName
+        if ($LASTEXITCODE -ne 0) {
+            continue
+        }
+        $probe = ($probeJson | Out-String) | ConvertFrom-Json
+        $streams = @($probe.streams)
+        $hasVideo = @($streams | Where-Object { $_.codec_type -eq "video" }).Count -gt 0
+        $hasAudio = @($streams | Where-Object { $_.codec_type -eq "audio" }).Count -gt 0
+        if ($hasVideo -and $hasAudio) {
+            $candidates += $file
+        }
+    }
+    return @($candidates)
 }
 
-function Resolve-InputMkvPath {
+function Resolve-InputVideoPath {
     param(
         [string]$InputPath,
         [bool]$WasProvided
     )
 
     if (!$WasProvided -or [string]::IsNullOrWhiteSpace($InputPath)) {
-        $candidates = Get-InputMkvCandidates
+        $candidates = Get-InputVideoCandidates
         if ($candidates.Count -eq 0) {
-            throw "No se encontro ningun video MKV en la carpeta 'input'. Para transcribir audio, ubica un archivo .mkv en 'input/' o indica -InputMkv."
+            throw "No se encontro ningun archivo de video con audio soportado por FFmpeg/Whisper en la carpeta 'input'. Para transcribir audio, ubica un video en 'input/' o indica -InputVideo."
         }
         if ($candidates.Count -gt 1) {
             $names = ($candidates | ForEach-Object { $_.Name }) -join "', '"
-            throw "Se encontraron multiples videos MKV en 'input': '$names'. El flujo solo puede procesar un video por ejecucion. Indica exactamente un archivo con -InputMkv."
+            throw "Se encontraron multiples videos en 'input': '$names'. El flujo solo puede procesar un video por ejecucion. Indica exactamente un archivo con -InputVideo."
         }
         return $candidates[0].FullName
     }
@@ -92,14 +118,33 @@ function Resolve-InputMkvPath {
     foreach ($candidatePath in ($candidatePaths | Select-Object -Unique)) {
         if (Test-Path -LiteralPath $candidatePath) {
             $resolved = Resolve-Path -LiteralPath $candidatePath
-            if ([System.IO.Path]::GetExtension($resolved.Path).ToLowerInvariant() -ne ".mkv") {
-                throw "El archivo de entrada debe ser un video MKV: $($resolved.Path)"
-            }
             return $resolved.Path
         }
     }
 
-    throw "No se encontro el archivo de video MKV indicado: $InputPath. Debe existir en 'input/' o debes pasar una ruta valida con -InputMkv."
+    throw "No se encontro el archivo de video indicado: $InputPath. Debe existir en 'input/' o debes pasar una ruta valida con -InputVideo."
+}
+
+function Assert-InputVideo {
+    param([string]$InputPath)
+
+    $probeJson = & ffprobe -v error `
+        -show_entries stream=index,codec_type `
+        -of json `
+        $InputPath
+    if ($LASTEXITCODE -ne 0) {
+        throw "ffprobe no pudo inspeccionar el archivo de entrada. Verifica que sea un video soportado por FFmpeg/Whisper: $InputPath"
+    }
+    $probe = ($probeJson | Out-String) | ConvertFrom-Json
+    $streams = @($probe.streams)
+    $hasVideo = @($streams | Where-Object { $_.codec_type -eq "video" }).Count -gt 0
+    $hasAudio = @($streams | Where-Object { $_.codec_type -eq "audio" }).Count -gt 0
+    if (!$hasVideo) {
+        throw "El archivo de entrada no contiene una pista de video: $InputPath"
+    }
+    if (!$hasAudio) {
+        throw "El archivo de entrada no contiene pistas de audio para transcribir: $InputPath"
+    }
 }
 
 function Select-AudioStream {
@@ -119,7 +164,7 @@ function Select-AudioStream {
     $probe = ($probeJson | Out-String) | ConvertFrom-Json
     $streams = @($probe.streams)
     if ($streams.Count -eq 0) {
-        throw "No se encontraron pistas de audio en el MKV; no se puede transcribir."
+        throw "No se encontraron pistas de audio en el video; no se puede transcribir."
     }
 
     if ($RequestedIndex -ge 0) {
@@ -131,18 +176,53 @@ function Select-AudioStream {
         throw "No se encontro la pista de audio con indice $RequestedIndex."
     }
 
-    foreach ($stream in $streams) {
-        if ($stream.disposition -and [int]$stream.disposition.default -eq 1) {
-            return $stream
+    $defaultStreams = @($streams | Where-Object { $_.disposition -and [int]$_.disposition.default -eq 1 })
+    if ($defaultStreams.Count -gt 0) {
+        if ($defaultStreams.Count -gt 1) {
+            $defaultIndexes = ($defaultStreams | ForEach-Object { "0:$([int]$_.index)" }) -join ", "
+            Write-Warning "Se encontraron multiples pistas de audio marcadas como default ($defaultIndexes). Se usara la primera segun el orden del contenedor. Indica -AudioStreamIndex para elegir otra."
         }
+        return $defaultStreams[0]
     }
     return $streams[0]
 }
 
-$inputMkvWasProvided = $PSBoundParameters.ContainsKey("InputMkv")
-$InputMkv = Resolve-InputMkvPath -InputPath $InputMkv -WasProvided $inputMkvWasProvided
-$PythonExe = Initialize-PythonEnvironment
+function Resolve-WhisperLanguage {
+    param(
+        [string]$RequestedLanguage,
+        $AudioStream
+    )
 
+    if (![string]::IsNullOrWhiteSpace($RequestedLanguage)) {
+        return $RequestedLanguage
+    }
+    if (!$AudioStream -or !$AudioStream.tags -or !$AudioStream.tags.language) {
+        return ""
+    }
+    $metadataLanguage = ([string]$AudioStream.tags.language).Trim().ToLowerInvariant()
+    $languageMap = @{
+        "eng" = "en"; "en" = "en"; "english" = "en"
+        "fre" = "fr"; "fra" = "fr"; "fr" = "fr"; "french" = "fr"
+        "jpn" = "ja"; "ja" = "ja"; "japanese" = "ja"
+        "spa" = "es"; "es" = "es"; "spanish" = "es"
+        "ger" = "de"; "deu" = "de"; "de" = "de"; "german" = "de"
+        "por" = "pt"; "pt" = "pt"; "portuguese" = "pt"
+        "ita" = "it"; "it" = "it"; "italian" = "it"
+        "rus" = "ru"; "ru" = "ru"; "russian" = "ru"
+        "kor" = "ko"; "ko" = "ko"; "korean" = "ko"
+        "chi" = "zh"; "zho" = "zh"; "cmn" = "zh"; "zh" = "zh"; "chinese" = "zh"
+        "hin" = "hi"; "hi" = "hi"; "hindi" = "hi"
+    }
+    if ($languageMap.ContainsKey($metadataLanguage)) {
+        return [string]$languageMap[$metadataLanguage]
+    }
+    if ($metadataLanguage -and $metadataLanguage -ne "und") {
+        return $metadataLanguage
+    }
+    return ""
+}
+
+$inputVideoWasProvided = $PSBoundParameters.ContainsKey("InputVideo") -or $PSBoundParameters.ContainsKey("InputMkv")
 foreach ($commandName in @("ffmpeg", "ffprobe")) {
     if ($null -eq (Get-Command $commandName -ErrorAction SilentlyContinue)) {
         throw "$commandName not found in PATH."
@@ -152,9 +232,13 @@ if (!$SkipRemux -and $null -eq (Get-Command "mkvmerge" -ErrorAction SilentlyCont
     throw "mkvmerge not found in PATH. Install MKVToolNix first, for example: choco install mkvtoolnix -y"
 }
 
+$InputVideo = Resolve-InputVideoPath -InputPath $InputVideo -WasProvided $inputVideoWasProvided
+$PythonExe = Initialize-PythonEnvironment
+Assert-InputVideo -InputPath $InputVideo
+
 $workspaceArgs = @(
     (Join-Path $ScriptDir "transcription_workspace.py"),
-    "--input-mkv", $InputMkv,
+    "--input-video", $InputVideo,
     "--json"
 )
 if ($WorkspaceId) {
@@ -175,11 +259,15 @@ $TranscribedAss = Resolve-ProjectPath ([string]$workspaceInfo.transcribed_ass)
 $TranscribedMkv = Resolve-ProjectPath ([string]$workspaceInfo.transcribed_mkv)
 $TranscriptionReport = Resolve-ProjectPath ([string]$workspaceInfo.transcription_report)
 
-$selectedAudio = Select-AudioStream -InputPath $InputMkv -RequestedIndex $AudioStreamIndex
+$selectedAudio = Select-AudioStream -InputPath $InputVideo -RequestedIndex $AudioStreamIndex
 $selectedAudioIndex = [int]$selectedAudio.index
+$EffectiveLanguage = Resolve-WhisperLanguage -RequestedLanguage $Language -AudioStream $selectedAudio
 
 Write-Host "Workspace: $WorkspaceId"
 Write-Host "Selected audio stream: 0:$selectedAudioIndex"
+if ($EffectiveLanguage) {
+    Write-Host "Transcription language: $EffectiveLanguage"
+}
 
 $backendArgs = @(
     (Join-Path $ScriptDir "transcription_backend.py"),
@@ -193,8 +281,8 @@ $backendArgs = @(
     "--batch-size", $BatchSize,
     "--json"
 )
-if ($Language) {
-    $backendArgs += @("--language", $Language)
+if ($EffectiveLanguage) {
+    $backendArgs += @("--language", $EffectiveLanguage)
 }
 if (!$Fp16) {
     $backendArgs += "--no-fp16"
@@ -223,7 +311,7 @@ foreach ($directory in @($SubtitleWorkDir, $WhisperOutputDir, $OutputDir)) {
 Write-Host "Extracting audio to mono 16 kHz WAV..."
 Invoke-Checked {
     ffmpeg -y -v error `
-        -i $InputMkv `
+        -i $InputVideo `
         -map "0:$selectedAudioIndex" `
         -vn `
         -ac 1 `
@@ -252,10 +340,12 @@ $postprocessArgs = @(
     "--output-ass", $TranscribedAss,
     "--report", $TranscriptionReport,
     "--backend", ([string]$backendInfo.backend),
+    "--max-lines", ([string]$MaxSubtitleLines),
+    "--max-line-chars", ([string]$MaxSubtitleLineChars),
     "--json"
 )
-if ($Language) {
-    $postprocessArgs += @("--requested-language", $Language)
+if ($EffectiveLanguage) {
+    $postprocessArgs += @("--requested-language", $EffectiveLanguage)
 }
 $postprocessJson = & $PythonExe @postprocessArgs
 if ($LASTEXITCODE -ne 0) {
@@ -267,10 +357,24 @@ if ($reportInfo.translation_warning) {
 }
 
 if (!$SkipRemux) {
-    Write-Host "Remuxing MKV with transcribed subtitles..."
-    $mkvInfoJson = & mkvmerge -J $InputMkv
+    Write-Host "Remuxing input video to MKV with transcribed subtitles..."
+    $muxInput = $InputVideo
+    $mkvInfoJson = & mkvmerge -J $muxInput
     if ($LASTEXITCODE -ne 0) {
-        throw "Could not inspect input MKV with mkvmerge."
+        $intermediateMkv = Join-Path $SubtitleWorkDir "$([System.IO.Path]::GetFileNameWithoutExtension($InputVideo)).container.mkv"
+        Write-Warning "mkvmerge could not inspect the original container directly. Creating an intermediate MKV with FFmpeg copy remux."
+        Invoke-Checked {
+            ffmpeg -y -v error `
+                -i $InputVideo `
+                -map 0 `
+                -c copy `
+                $intermediateMkv
+        }
+        $muxInput = $intermediateMkv
+        $mkvInfoJson = & mkvmerge -J $muxInput
+        if ($LASTEXITCODE -ne 0) {
+            throw "Could not inspect input video or intermediate MKV with mkvmerge."
+        }
     }
     $mkvInfo = ($mkvInfoJson | Out-String) | ConvertFrom-Json
     $sourceSubtitleDefaultArgs = @()
@@ -288,7 +392,7 @@ if (!$SkipRemux) {
         mkvmerge `
             --output $TranscribedMkv `
             @sourceSubtitleDefaultArgs `
-            $InputMkv `
+            $muxInput `
             --language "0:$($reportInfo.mkv_language)" `
             --track-name "0:$subtitleTitle" `
             --default-track-flag 0:yes `

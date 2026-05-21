@@ -28,6 +28,7 @@ prd/
 !PRD.md
 !PRD-spanish-normalization.md
 !PRD-transcription.md
+!PRD-voice-cleaner.md
 
 # Local tools and downloaded installers/packages
 tools/
@@ -55,6 +56,10 @@ env/
 .cache/
 cache/
 models/
+!models/
+models/*
+!models/voice-cleaner/
+!models/voice-cleaner/std.rnnn
 model_cache/
 whisper_cache/
 whisper_models/

@@ -4,6 +4,11 @@ param(
     [string]$VenvDir = "",
     [string]$RequirementsPath = "",
     [string]$WhisperXRequirementsPath = "",
+    [string]$TorchCudaIndexUrl = "https://download.pytorch.org/whl/cu128",
+    [string]$TorchCudaVersion = "2.8.0",
+    [string]$TorchVisionCudaVersion = "0.23.0",
+    [string]$TorchAudioCudaVersion = "2.8.0",
+    [switch]$EnsureCudaTorch,
     [switch]$Json,
     [switch]$SkipInstall
 )
@@ -97,6 +102,7 @@ function Invoke-SetupCommand {
 $createdVenv = $false
 $installedRequirements = $false
 $installedWhisperXRequirements = $false
+$installedCudaTorch = $false
 $whisperXWarning = ""
 
 if (!(Test-Path -LiteralPath $VenvPython)) {
@@ -155,6 +161,38 @@ if (!$SkipInstall -and $whisperXRequirementsHash -and $whisperXRequirementsHash 
     }
 }
 
+function Test-TorchCudaAvailable {
+    $cudaCheck = @"
+import sys
+try:
+    import torch
+except Exception:
+    sys.exit(2)
+sys.exit(0 if torch.cuda.is_available() else 1)
+"@
+    & $VenvPython -c $cudaCheck *> $null
+    return ($LASTEXITCODE -eq 0)
+}
+
+if (!$SkipInstall -and $EnsureCudaTorch) {
+    if (!(Test-TorchCudaAvailable)) {
+        Invoke-SetupCommand -Executable $VenvPython -Arguments @(
+            "-m", "pip", "install",
+            "--upgrade",
+            "--force-reinstall",
+            "torch==$TorchCudaVersion",
+            "torchvision==$TorchVisionCudaVersion",
+            "torchaudio==$TorchAudioCudaVersion",
+            "--index-url",
+            $TorchCudaIndexUrl
+        )
+        $installedCudaTorch = $true
+    }
+    if (!(Test-TorchCudaAvailable)) {
+        throw "PyTorch no tiene CUDA disponible dentro de .venv despues de instalar desde $TorchCudaIndexUrl. Revisa driver NVIDIA, compatibilidad de GPU y el log .venv\setup.log."
+    }
+}
+
 $payload = [ordered]@{
     python = $VenvPython
     venv_dir = $VenvDir
@@ -164,6 +202,7 @@ $payload = [ordered]@{
     created_venv = $createdVenv
     installed_requirements = $installedRequirements
     installed_whisperx_requirements = $installedWhisperXRequirements
+    installed_cuda_torch = $installedCudaTorch
     whisperx_warning = $whisperXWarning
 }
 
@@ -179,5 +218,8 @@ if ($Json) {
     }
     if ($installedWhisperXRequirements) {
         Write-Host "Installed WhisperX requirements: $WhisperXRequirementsPath"
+    }
+    if ($installedCudaTorch) {
+        Write-Host "Installed CUDA PyTorch from: $TorchCudaIndexUrl"
     }
 }

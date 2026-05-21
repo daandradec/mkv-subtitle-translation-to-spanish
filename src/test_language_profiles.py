@@ -5,7 +5,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from languages import UnsupportedLanguageError, get_language_profile, normalize_language_code
-from subtitle_language import TEXT_SUBTITLE_CODECS, find_subtitle_stream
+from subtitle_language import TEXT_SUBTITLE_CODECS, choose_best_subtitle_candidate, find_subtitle_stream
 
 
 class LanguageProfileTests(unittest.TestCase):
@@ -68,6 +68,38 @@ class LanguageProfileTests(unittest.TestCase):
             "No se encontraron subtítulos incrustados en el archivo original para traducir a español",
             str(ctx.exception),
         )
+
+    def test_default_subtitle_track_wins_without_explicit_stream(self):
+        inventory = {
+            "candidates": [
+                {
+                    "stream_index": 5,
+                    "mkv_track_id": 5,
+                    "source_language": "fr",
+                    "supported": True,
+                    "textual": True,
+                    "forced_like": False,
+                    "cc_like": False,
+                    "default": False,
+                    "score": (0, 0, 10000, 1000, 500, 500, 0),
+                },
+                {
+                    "stream_index": 8,
+                    "mkv_track_id": 8,
+                    "source_language": "fr",
+                    "supported": True,
+                    "textual": True,
+                    "forced_like": False,
+                    "cc_like": False,
+                    "default": True,
+                    "score": (0, 0, 10000, 1000, 300, 500, 100),
+                },
+            ]
+        }
+
+        selected, _ = choose_best_subtitle_candidate(inventory)
+
+        self.assertEqual(selected["stream_index"], 8)
 
 
 if __name__ == "__main__":

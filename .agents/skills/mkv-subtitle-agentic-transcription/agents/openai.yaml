@@ -1,4 +1,0 @@
-interface:
-  display_name: "MKV Subtitle Agentic Transcription"
-  short_description: "Create embedded subtitles from MKV audio"
-  default_prompt: "Use $mkv-subtitle-agentic-transcription to transcribe MKV audio locally with WhisperX or Whisper fallback and embed source-language subtitles."

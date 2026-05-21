@@ -10,7 +10,7 @@ Default command shape:
 whisperx "<audio.wav>" --model large-v3 --device cuda --compute_type float16 --batch_size 8 --output_dir "<workdir>" --output_format all
 ```
 
-Add `--language <code>` only when the user provides a language.
+Add `--language <code>` when the user provides `-Language` or when the selected audio stream metadata can be mapped to a Whisper language code.
 
 ## openai-whisper Fallback
 

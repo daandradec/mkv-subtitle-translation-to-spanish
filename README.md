@@ -63,8 +63,9 @@ C:\Program Files\MKVToolNix
 - `src\subtitle_workspace.py`: crea carpetas dedicadas por ejecucion para `subtitle_work/`, `translations/` y `output/`.
 - `src\translation_maps.py`: resuelve mapas JSON por workspace e idioma fuente.
 - `src\translation_terms.py`: aplica glosarios locales para normalizar nombres propios y terminos recurrentes.
-- `src\transcribe_mkv_audio.ps1`: transcribe audio de un MKV sin subtitulos y remuxea un MKV con subtitulos transcritos.
+- `src\transcribe_video_audio.ps1`: transcribe audio de un video sin subtitulos y genera un MKV con subtitulos transcritos.
 - `src\transcription_backend.py`, `src\transcription_workspace.py`, `src\transcription_postprocess.py`: soporte para backend WhisperX/Whisper, workspaces y postproceso de transcripcion.
+- `src\clean_video_voice.ps1` y `src\voice_cleaner.py`: limpian, aclaran y normalizan voces en un video antes de una posible transcripcion.
 - `src\init_python_env.ps1`: crea y valida `.venv` con Python 3.12 e instala dependencias desde `requirements.txt`.
 - `requirements.txt`: dependencias Python requeridas del proyecto.
 - `requirements-whisperx.txt`: dependencia preferida de WhisperX para mejores timestamps.
@@ -81,7 +82,7 @@ Validaciones de entrada:
 - Si el MKV seleccionado no tiene subtitulos incrustados, el flujo se detiene y avisa que no se encontraron subtitulos en el archivo original para traducir a espanol.
 - `input/` es la carpeta canonica. Si escribes `inputs\archivo.mkv`, corrige a `input\archivo.mkv` cuando ese archivo exista.
 
-Si un MKV no tiene subtitulos incorporados, usa primero la skill `mkv-subtitle-agentic-transcription` para crear subtitulos desde el audio. El MKV transcrito puede usarse despues como entrada de `mkv-subtitle-agentic-translation` cuando el idioma resultante sea soportado.
+Si un video no tiene subtitulos incorporados, usa primero la skill `video-subtitle-agentic-transcription` para crear subtitulos desde el audio. El MKV transcrito puede usarse despues como entrada de `mkv-subtitle-agentic-translation` cuando el idioma resultante sea soportado.
 
 Cada ejecucion crea workspaces dedicados para no mezclar artefactos de distintos videos:
 
@@ -92,6 +93,46 @@ output\<prefijo-24>-<codigo-6>\
 ```
 
 El prefijo se arma con palabras completas del nombre del MKV, hasta 24 caracteres, y el mismo identificador se usa en `subtitle_work`, `translations` y `output`.
+
+## Flujo Opcional De Limpieza De Voz
+
+Usa este flujo cuando el audio de un video tenga ruido de fondo, voces poco claras o loudness irregular. Es independiente: no transcribe, no traduce y no llama automaticamente a otras skills. El resultado es un MKV nuevo que puedes usar despues con `video-subtitle-agentic-transcription` si quieres.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\src\clean_video_voice.ps1 `
+  -InputVideo ".\input\video.mp4" `
+  -Profile conservative `
+  -AudioStreamIndex -1 `
+  -OutputFormat mkv
+```
+
+Perfiles:
+
+- `conservative`: default; prioriza voz natural y bajo riesgo de artefactos.
+- `balanced`: mas limpieza e inteligibilidad.
+- `asr`: prioriza claridad para Whisper/WhisperX, con mayor riesgo de sonido artificial.
+
+El script:
+
+1. Selecciona el audio default o el indicado con `-AudioStreamIndex`.
+2. Valida el modelo RNNoise versionado en `models\voice-cleaner\std.rnnn`.
+3. Aplica limpieza moderada de ruido, ecualizacion de voz, de-esser, compresion suave, limitador y loudness normalization en dos pasadas.
+4. Genera:
+
+```text
+output\<workspace-id>\<stem>.voice-cleaned.mkv
+output\<workspace-id>\<stem>.voice-cleaned.flac
+subtitle_work\<workspace-id>\voice_cleaner_report.json
+subtitle_work\<workspace-id>\voice-cleaner\
+```
+
+El MKV limpio conserva las pistas originales, desactiva el default en audios originales y agrega `Voz limpia FLAC` como pista de audio default. Para revisar sin procesar, usa `-DryRun`; para clips antes/despues, usa `-GenerateSamples`.
+
+Invocacion desde Codex:
+
+```text
+[$video-voice-cleaner](C:\Development\Proyectos\Video\.agents\skills\video-voice-cleaner\SKILL.md) "input\video.mp4"
+```
 
 ## Flujo Principal con PowerShell
 
@@ -112,7 +153,7 @@ powershell -ExecutionPolicy Bypass -File .\src\traducir_subs_mkv.ps1 `
 El script hace lo siguiente:
 
 1. Inicializa y activa `.venv` con Python 3.12.
-2. Valida el MKV de entrada y selecciona la mejor pista textual soportada cuando no indicas `-SourceSubtitleStreamIndex`.
+2. Valida el MKV de entrada. Si indicas `-SourceSubtitleStreamIndex`, usa esa pista exacta; si no, usa la pista de subtitulos default cuando sea textual y soportada; si no hay default usable, selecciona la mejor pista textual soportada.
 3. Crea un workspace dedicado en `subtitle_work\<workspace-id>\`, `translations\<workspace-id>\` y `output\<workspace-id>\`.
 4. Extrae la pista de subtitulos seleccionada a `subtitle_work\<workspace-id>\*.source.ass`.
 5. Resuelve mapas de traduccion desde `translations\<workspace-id>\<idioma>\` si no pasas `-TranslationJson`.
@@ -135,27 +176,30 @@ Si la pista fuente embebida es SRT/SubRip, VTT/WebVTT, `mov_text` o texto simple
 
 ## Flujo de Transcripcion
 
-Usa este flujo cuando el MKV no tenga subtitulos incorporados y necesites crearlos desde el audio.
+Usa este flujo cuando un video no tenga subtitulos incorporados y necesites crearlos desde el audio. La entrada puede ser cualquier archivo de video con audio que FFmpeg/Whisper pueda decodificar, por ejemplo MKV, MP4, MOV, M4V, WebM, AVI, WMV, FLV, TS/M2TS, MPEG/MPG, 3GP/3G2 u OGV. La salida final siempre sera MKV.
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\src\transcribe_mkv_audio.ps1 `
-  -InputMkv ".\input\video.mkv" `
+powershell -ExecutionPolicy Bypass -File .\src\transcribe_video_audio.ps1 `
+  -InputVideo ".\input\video.mp4" `
   -Backend auto `
   -WhisperXModel large-v3 `
   -WhisperModel turbo `
   -Device cuda `
   -ComputeType float16 `
-  -BatchSize 8
+  -BatchSize 8 `
+  -MaxSubtitleLines 2 `
+  -MaxSubtitleLineChars 52
 ```
 
 El script:
 
 1. Inicializa y activa `.venv` con Python 3.12.
-2. Selecciona el audio default o el indicado con `-AudioStreamIndex`.
+2. Selecciona el audio default o el indicado opcionalmente con `-AudioStreamIndex`; si no pasas `-Language`, deriva el idioma desde la metadata de esa pista seleccionada.
 3. Extrae audio WAV mono 16 kHz en `subtitle_work\<workspace-id>\`.
 4. Usa WhisperX desde `.venv`; si no esta disponible, usa `openai-whisper` desde `.venv` como fallback.
 5. Transcribe en el idioma original, sin traducir.
-6. Genera:
+6. Postprocesa los subtitulos para mejorar legibilidad: maximo 2 lineas por cue, lineas de hasta 52 caracteres por defecto y ASS con margenes laterales de 10% para ocupar aproximadamente el 80% del ancho del video.
+7. Genera:
 
 ```text
 output\<workspace-id>\<stem>.transcribed.srt
@@ -164,19 +208,19 @@ output\<workspace-id>\<stem>.transcribed.mkv
 subtitle_work\<workspace-id>\transcription_report.json
 ```
 
-El MKV transcrito incluye una pista SRT default con titulo `Transcripción <idioma>`. Si el idioma detectado no esta soportado por la skill de traduccion, el flujo avisa que la transcripcion es valida pero la traduccion posterior puede detenerse.
+El MKV transcrito incluye una pista SRT default con titulo `Transcripción <idioma>`. Si `mkvmerge` no puede leer el contenedor fuente directamente, el script crea primero un MKV intermedio en `subtitle_work\<workspace-id>\` con `ffmpeg -map 0 -c copy`. Si el idioma detectado no esta soportado por la skill de traduccion, el flujo avisa que la transcripcion es valida pero la traduccion posterior puede detenerse.
 Cuando el idioma si esta soportado, `mkv-subtitle-agentic-translation` puede usar esa pista SRT transcrita como fuente y convertirla automaticamente a ASS para su pipeline interno.
 
 La skill local vive en:
 
 ```text
-.agents\skills\mkv-subtitle-agentic-transcription\SKILL.md
+.agents\skills\video-subtitle-agentic-transcription\SKILL.md
 ```
 
 Invocacion desde Codex:
 
 ```text
-[$mkv-subtitle-agentic-transcription](C:\Development\Proyectos\Video\.agents\skills\mkv-subtitle-agentic-transcription\SKILL.md) "input\video.mkv"
+[$video-subtitle-agentic-transcription](C:\Development\Proyectos\Video\.agents\skills\video-subtitle-agentic-transcription\SKILL.md) "input\video.mp4"
 ```
 
 ## Idiomas Fuente Soportados
@@ -243,7 +287,7 @@ Si usas otro MKV, puedes dejar que el script seleccione automaticamente la mejor
 ffprobe -hide_banner -i ".\entrada.mkv"
 ```
 
-La seleccion automatica evita pistas `Forced` cuando hay pistas completas, evita CC/SDH salvo que se indique, prefiere mayor cobertura de eventos/duracion y considera la metadata del audio. Si quieres forzar otra pista, pasa `-SourceSubtitleStreamIndex` y, cuando el track ID de mkvmerge sea distinto, `-SourceMkvTrackId`:
+La seleccion automatica usa primero la pista de subtitulos `default` cuando sea textual y tenga idioma soportado. Si no existe una default usable, evita pistas `Forced` cuando hay pistas completas, evita CC/SDH salvo que se indique, prefiere mayor cobertura de eventos/duracion y considera la metadata del audio. Si quieres forzar otra pista, pasa `-SourceSubtitleStreamIndex`; normalmente el script resuelve el track ID de mkvmerge automaticamente, pero puedes pasar `-SourceMkvTrackId` si necesitas corregirlo manualmente:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\src\traducir_subs_mkv.ps1 `

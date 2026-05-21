@@ -274,6 +274,20 @@ if ($existingTranslationJson.Count -eq 0) {
     throw "No translation JSON files found. Expected at least one of: $($TranslationJson -join ', ')"
 }
 
+Write-Host "Normalizing and validating Spanish translation maps..."
+$sanitizedTranslationDir = Join-Path $SubtitleWorkDir "sanitized_translation_maps"
+$translationQualityReport = Join-Path $SubtitleWorkDir "translation_map_quality_report.json"
+$sanitizedMapsJson = & $PythonExe (Join-Path $ScriptDir "normalize_translation_maps.py") `
+    --translations $existingTranslationJson `
+    --output-dir $sanitizedTranslationDir `
+    --report $translationQualityReport `
+    --json
+if ($LASTEXITCODE -ne 0) {
+    throw "Translation map quality validation failed. See report: $translationQualityReport"
+}
+$sanitizedMapsInfo = ($sanitizedMapsJson | Out-String) | ConvertFrom-Json
+$existingTranslationJson = @($sanitizedMapsInfo.translation_maps)
+
 $existingTermMapJson = @()
 foreach ($path in $TermMapJson) {
     if (Test-Path -LiteralPath $path) {

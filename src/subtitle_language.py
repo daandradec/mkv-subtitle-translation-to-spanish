@@ -138,8 +138,7 @@ def inspect_subtitle_candidates(input_mkv):
     }
 
 
-def select_best_subtitle_stream(input_mkv):
-    inventory = inspect_subtitle_candidates(input_mkv)
+def choose_best_subtitle_candidate(inventory):
     candidates = [
         candidate
         for candidate in inventory["candidates"]
@@ -152,6 +151,19 @@ def select_best_subtitle_stream(input_mkv):
             )
         raise ValueError("No se encontraron subtítulos incrustados en el archivo original para traducir a español.")
 
+    default_candidates = [candidate for candidate in candidates if candidate["default"]]
+    if default_candidates:
+        candidates = default_candidates
+        selection_reason = (
+            "Se eligió una pista textual soportada marcada como default. "
+            "Si quieres otra pista, pasa -SourceSubtitleStreamIndex."
+        )
+    else:
+        selection_reason = (
+            "No había pista default textual soportada; se eligió la mejor candidata por cobertura, "
+            "idioma y descarte de pistas forced/CC."
+        )
+
     non_forced = [candidate for candidate in candidates if not candidate["forced_like"]]
     if non_forced:
         candidates = non_forced
@@ -160,10 +172,13 @@ def select_best_subtitle_stream(input_mkv):
         candidates = non_cc
 
     selected = max(candidates, key=lambda candidate: candidate["score"])
-    selected["selection_reason"] = (
-        "Se eligió la pista textual soportada con mejor cobertura; se excluyeron pistas forced/CC cuando había alternativas completas."
-    )
+    selected["selection_reason"] = selection_reason
     return selected, inventory
+
+
+def select_best_subtitle_stream(input_mkv):
+    inventory = inspect_subtitle_candidates(input_mkv)
+    return choose_best_subtitle_candidate(inventory)
 
 
 def find_subtitle_stream(probe_data, stream_index):
@@ -185,6 +200,16 @@ def validate_stream_language(input_mkv, stream_index=None, language_override="")
     if stream_index is None:
         selected, _inventory = select_best_subtitle_stream(input_mkv)
         stream_index = selected["stream_index"]
+    else:
+        inventory = inspect_subtitle_candidates(input_mkv)
+        selected = next(
+            (
+                candidate
+                for candidate in inventory["candidates"]
+                if candidate["stream_index"] == stream_index
+            ),
+            None,
+        )
     probe_data = run_ffprobe(input_mkv)
     stream = find_subtitle_stream(probe_data, stream_index)
     codec_name = stream.get("codec_name", "")

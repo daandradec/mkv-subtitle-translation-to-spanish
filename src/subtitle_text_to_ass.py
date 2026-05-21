@@ -28,7 +28,7 @@ PlayResY: {play_res_y}
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,{font_name},{font_size},&H00FFFFFF,&H000000FF,&H00000000,&H99000000,0,0,0,0,100,100,0,0,1,2,0,2,80,80,48,1
+Style: Default,{font_name},{font_size},&H00FFFFFF,&H000000FF,&H00000000,&H99000000,0,0,0,0,100,100,0,0,1,2,0,2,{margin_l},{margin_r},{margin_v},1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -202,13 +202,27 @@ def escape_ass_text(text):
     return text
 
 
-def write_ass(cues, output_path, title="Converted text subtitles", play_res_x=1920, play_res_y=1080, font_name="Arial", font_size=54):
+def write_ass(
+    cues,
+    output_path,
+    title="Converted text subtitles",
+    play_res_x=1920,
+    play_res_y=1080,
+    font_name="Arial",
+    font_size=54,
+    margin_l=80,
+    margin_r=80,
+    margin_v=48,
+):
     header = ASS_HEADER_TEMPLATE.format(
         title=title,
         play_res_x=play_res_x,
         play_res_y=play_res_y,
         font_name=font_name,
         font_size=font_size,
+        margin_l=margin_l,
+        margin_r=margin_r,
+        margin_v=margin_v,
     )
     lines = [header.rstrip()]
     seen = set()
@@ -245,6 +259,9 @@ def main():
     parser.add_argument("--play-res-y", type=int, default=1080)
     parser.add_argument("--font-name", default="Arial")
     parser.add_argument("--font-size", type=int, default=54)
+    parser.add_argument("--margin-l", type=int, default=80)
+    parser.add_argument("--margin-r", type=int, default=80)
+    parser.add_argument("--margin-v", type=int, default=48)
     args = parser.parse_args()
 
     result = convert_text_subtitle_to_ass(
@@ -256,6 +273,9 @@ def main():
         play_res_y=args.play_res_y,
         font_name=args.font_name,
         font_size=args.font_size,
+        margin_l=args.margin_l,
+        margin_r=args.margin_r,
+        margin_v=args.margin_v,
     )
     print(f"input cues: {result['input_cues']}")
     print(f"written dialogue events: {result['written_dialogues']}")
