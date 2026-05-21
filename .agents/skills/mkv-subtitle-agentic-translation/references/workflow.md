@@ -16,6 +16,7 @@
 - Write final deliverables to `output/<workspace-id>/`.
 - Use `subtitle_work/` or a temporary folder for extraction, grouping, review, and debug artifacts.
 - Never commit media, extracted subtitles, or generated outputs.
+- Initialize `.venv/` with Python 3.12 using `src/init_python_env.ps1` before running Python helpers. Use `.venv/Scripts/python.exe`, not the global Python.
 - Plan subagent usage in small batches before spawning any role. Keep at most two active subagents, wait for results, integrate them, and close completed agents before the next batch.
 
 ## 1.1 Agent Lifecycle Checkpoint

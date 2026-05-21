@@ -1,0 +1,3 @@
+# Required project runtime dependencies installed into the local Python 3.12 virtual environment.
+# WhisperX is installed from requirements-whisperx.txt as the preferred optional backend.
+openai-whisper>=20240930

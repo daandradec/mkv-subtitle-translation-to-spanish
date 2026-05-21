@@ -7,27 +7,44 @@ El repositorio contiene los scripts y mapas de traduccion. Los videos, subtitulo
 ## Requisitos
 
 - Windows PowerShell.
-- Python 3 disponible como `python`.
+- Python 3.12 instalado y disponible con `py -3.12` o en PATH.
 - FFmpeg disponible en PATH:
   - `ffmpeg`
   - `ffprobe`
 - MKVToolNix disponible en PATH:
   - `mkvmerge`
+- Dependencias Python instaladas automaticamente en `.venv/`:
+  - `whisperx` recomendado para mejores timestamps;
+  - `whisper` de `openai-whisper` como fallback local.
 
 Instalacion sugerida con Chocolatey:
 
 ```powershell
-choco install ffmpeg mkvtoolnix -y
+choco install python312 ffmpeg mkvtoolnix -y
 ```
 
 Verifica:
 
 ```powershell
+py -3.12 --version
 ffmpeg -version
 ffprobe -version
 mkvmerge --version
-python --version
 ```
+
+## Entorno Python Local
+
+El proyecto no usa el Python global para ejecutar los flujos. Antes de traducir o transcribir, los scripts inicializan y activan automaticamente un entorno virtual local en `.venv/` con Python 3.12.
+
+Ese entorno instala las dependencias requeridas declaradas en `requirements.txt` y luego intenta instalar WhisperX desde `requirements-whisperx.txt` como backend preferido. Esto evita el problema de Python 3.14, porque WhisperX en PyPI requiere Python `>=3.10,<3.14`. Si WhisperX falla por alguna dependencia, el flujo puede continuar con `openai-whisper` desde el mismo `.venv/`.
+
+Tambien puedes inicializarlo manualmente:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\src\init_python_env.ps1
+```
+
+Durante cada flujo, los scripts agregan `.venv\Scripts` al inicio del PATH y usan `.venv\Scripts\python.exe`. Por eso `whisperx` y `whisper` deben resolverse desde el entorno local, no desde instalaciones globales.
 
 Si `mkvmerge` existe pero PowerShell no lo detecta, cierra y vuelve a abrir la terminal. En instalaciones manuales de MKVToolNix, agrega esta carpeta al PATH si aplica:
 
@@ -46,6 +63,11 @@ C:\Program Files\MKVToolNix
 - `src\subtitle_workspace.py`: crea carpetas dedicadas por ejecucion para `subtitle_work/`, `translations/` y `output/`.
 - `src\translation_maps.py`: resuelve mapas JSON por workspace e idioma fuente.
 - `src\translation_terms.py`: aplica glosarios locales para normalizar nombres propios y terminos recurrentes.
+- `src\transcribe_mkv_audio.ps1`: transcribe audio de un MKV sin subtitulos y remuxea un MKV con subtitulos transcritos.
+- `src\transcription_backend.py`, `src\transcription_workspace.py`, `src\transcription_postprocess.py`: soporte para backend WhisperX/Whisper, workspaces y postproceso de transcripcion.
+- `src\init_python_env.ps1`: crea y valida `.venv` con Python 3.12 e instala dependencias desde `requirements.txt`.
+- `requirements.txt`: dependencias Python requeridas del proyecto.
+- `requirements-whisperx.txt`: dependencia preferida de WhisperX para mejores timestamps.
 - `src\test_*.py`: pruebas unitarias.
 - `translations\`: mapas de traduccion locales. Esta carpeta esta ignorada por Git y no se sube al repositorio. Todos los idiomas, incluido ingles, usan `translations\<workspace-id>\<idioma>\`.
 - `.gitignore`: excluye videos, subtitulos extraidos, caches y temporales.
@@ -58,6 +80,8 @@ Validaciones de entrada:
 - Si `input/` contiene varios MKV, el flujo no elige automaticamente. Debes indicar exactamente un archivo con `-InputMkv`.
 - Si el MKV seleccionado no tiene subtitulos incrustados, el flujo se detiene y avisa que no se encontraron subtitulos en el archivo original para traducir a espanol.
 - `input/` es la carpeta canonica. Si escribes `inputs\archivo.mkv`, corrige a `input\archivo.mkv` cuando ese archivo exista.
+
+Si un MKV no tiene subtitulos incorporados, usa primero la skill `mkv-subtitle-agentic-transcription` para crear subtitulos desde el audio. El MKV transcrito puede usarse despues como entrada de `mkv-subtitle-agentic-translation` cuando el idioma resultante sea soportado.
 
 Cada ejecucion crea workspaces dedicados para no mezclar artefactos de distintos videos:
 
@@ -87,15 +111,16 @@ powershell -ExecutionPolicy Bypass -File .\src\traducir_subs_mkv.ps1 `
 
 El script hace lo siguiente:
 
-1. Valida el MKV de entrada y selecciona la mejor pista textual soportada cuando no indicas `-SourceSubtitleStreamIndex`.
-2. Crea un workspace dedicado en `subtitle_work\<workspace-id>\`, `translations\<workspace-id>\` y `output\<workspace-id>\`.
-3. Extrae la pista de subtitulos seleccionada a `subtitle_work\<workspace-id>\*.source.ass`.
-4. Resuelve mapas de traduccion desde `translations\<workspace-id>\<idioma>\` si no pasas `-TranslationJson`.
-5. Genera `output\<workspace-id>\*.spa.ass`.
-6. Genera `output\<workspace-id>\*.spa.srt` cuando pasas `-TvSafeSrt`.
-7. Normaliza el espanol visible del ASS y regenera el SRT TV-safe desde ese ASS normalizado.
-8. Crea un MKV nuevo con `mkvmerge`, sin recodificar video/audio. Usa `-EmbeddedSubtitleFormat both` para incrustar ASS y SRT, `srt` para solo TV-safe, o `ass` para solo ASS estilizado.
-9. Conserva las pistas originales pero desactiva el default en todos los subtitulos originales. La pista `Español LatAm TV-safe` queda como `spa` y `default`; `Español LatAm` ASS queda incrustada como alternativa no-default.
+1. Inicializa y activa `.venv` con Python 3.12.
+2. Valida el MKV de entrada y selecciona la mejor pista textual soportada cuando no indicas `-SourceSubtitleStreamIndex`.
+3. Crea un workspace dedicado en `subtitle_work\<workspace-id>\`, `translations\<workspace-id>\` y `output\<workspace-id>\`.
+4. Extrae la pista de subtitulos seleccionada a `subtitle_work\<workspace-id>\*.source.ass`.
+5. Resuelve mapas de traduccion desde `translations\<workspace-id>\<idioma>\` si no pasas `-TranslationJson`.
+6. Genera `output\<workspace-id>\*.spa.ass`.
+7. Genera `output\<workspace-id>\*.spa.srt` cuando pasas `-TvSafeSrt`.
+8. Normaliza el espanol visible del ASS y regenera el SRT TV-safe desde ese ASS normalizado.
+9. Crea un MKV nuevo con `mkvmerge`, sin recodificar video/audio. Usa `-EmbeddedSubtitleFormat both` para incrustar ASS y SRT, `srt` para solo TV-safe, o `ass` para solo ASS estilizado.
+10. Conserva las pistas originales pero desactiva el default en todos los subtitulos originales. La pista `Español LatAm TV-safe` queda como `spa` y `default`; `Español LatAm` ASS queda incrustada como alternativa no-default.
 
 Salida por defecto:
 
@@ -106,6 +131,53 @@ output\<workspace-id>\Love Live! Nijigasaki High School Idol Club the Movie - Ch
 ```
 
 Este flujo actual esta preparado para el caso ya trabajado y tambien puede seleccionar automaticamente una pista textual soportada cuando no se pasa indice. Para otros idiomas, mapas nuevos o subtitulos SRT/VTT incrustados, usa primero la inspeccion con agentes o los scripts auxiliares descritos abajo.
+Si la pista fuente embebida es SRT/SubRip, VTT/WebVTT, `mov_text` o texto simple, el script la extrae y la convierte a ASS simple antes de aplicar traducciones.
+
+## Flujo de Transcripcion
+
+Usa este flujo cuando el MKV no tenga subtitulos incorporados y necesites crearlos desde el audio.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\src\transcribe_mkv_audio.ps1 `
+  -InputMkv ".\input\video.mkv" `
+  -Backend auto `
+  -WhisperXModel large-v3 `
+  -WhisperModel turbo `
+  -Device cuda `
+  -ComputeType float16 `
+  -BatchSize 8
+```
+
+El script:
+
+1. Inicializa y activa `.venv` con Python 3.12.
+2. Selecciona el audio default o el indicado con `-AudioStreamIndex`.
+3. Extrae audio WAV mono 16 kHz en `subtitle_work\<workspace-id>\`.
+4. Usa WhisperX desde `.venv`; si no esta disponible, usa `openai-whisper` desde `.venv` como fallback.
+5. Transcribe en el idioma original, sin traducir.
+6. Genera:
+
+```text
+output\<workspace-id>\<stem>.transcribed.srt
+output\<workspace-id>\<stem>.transcribed.ass
+output\<workspace-id>\<stem>.transcribed.mkv
+subtitle_work\<workspace-id>\transcription_report.json
+```
+
+El MKV transcrito incluye una pista SRT default con titulo `Transcripción <idioma>`. Si el idioma detectado no esta soportado por la skill de traduccion, el flujo avisa que la transcripcion es valida pero la traduccion posterior puede detenerse.
+Cuando el idioma si esta soportado, `mkv-subtitle-agentic-translation` puede usar esa pista SRT transcrita como fuente y convertirla automaticamente a ASS para su pipeline interno.
+
+La skill local vive en:
+
+```text
+.agents\skills\mkv-subtitle-agentic-transcription\SKILL.md
+```
+
+Invocacion desde Codex:
+
+```text
+[$mkv-subtitle-agentic-transcription](C:\Development\Proyectos\Video\.agents\skills\mkv-subtitle-agentic-transcription\SKILL.md) "input\video.mkv"
+```
 
 ## Idiomas Fuente Soportados
 
@@ -184,14 +256,20 @@ powershell -ExecutionPolicy Bypass -File .\src\traducir_subs_mkv.ps1 `
 
 Los scripts tambien pueden usarse por piezas cuando estas preparando o depurando una pista de subtitulos.
 
+Inicializa el entorno local antes de invocar modulos Python directamente:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\src\init_python_env.ps1
+```
+
 ### 1. Extraer Subtitulos
 
 Inspecciona el contenedor:
 
 ```powershell
 ffprobe -hide_banner -i ".\input\entrada.mkv"
-python .\src\subtitle_language.py --input-mkv ".\input\entrada.mkv" --list-candidates
-python .\src\subtitle_workspace.py --input-mkv ".\input\entrada.mkv" --workspace-id "entrada-demo-A1B2C3"
+.\.venv\Scripts\python.exe .\src\subtitle_language.py --input-mkv ".\input\entrada.mkv" --list-candidates
+.\.venv\Scripts\python.exe .\src\subtitle_workspace.py --input-mkv ".\input\entrada.mkv" --workspace-id "entrada-demo-A1B2C3"
 ```
 
 Extrae una pista ASS:
@@ -215,7 +293,7 @@ El indice real puede variar; usa el resultado de `ffprobe`.
 Cuando la pista fuente extraida sea `.srt`, `.vtt` o `.webvtt`, conviertela a ASS simple:
 
 ```powershell
-python .\src\subtitle_text_to_ass.py `
+.\.venv\Scripts\python.exe .\src\subtitle_text_to_ass.py `
   --input ".\subtitle_work\entrada-demo-A1B2C3\entrada.source.srt" `
   --output ".\subtitle_work\entrada-demo-A1B2C3\entrada.source.ass"
 ```
@@ -223,7 +301,7 @@ python .\src\subtitle_text_to_ass.py `
 Para VTT:
 
 ```powershell
-python .\src\subtitle_text_to_ass.py `
+.\.venv\Scripts\python.exe .\src\subtitle_text_to_ass.py `
   --input ".\subtitle_work\entrada-demo-A1B2C3\entrada.source.vtt" `
   --output ".\subtitle_work\entrada-demo-A1B2C3\entrada.source.ass" `
   --format vtt
@@ -234,7 +312,7 @@ Este modulo preserva tiempos, limpia marcas comunes de SRT/VTT y genera eventos 
 ### 3. Aplicar Mapas de Traduccion
 
 ```powershell
-python .\src\ass_apply_translations.py `
+.\.venv\Scripts\python.exe .\src\ass_apply_translations.py `
   --input-ass ".\subtitle_work\entrada-demo-A1B2C3\entrada.source.ass" `
   --output-ass ".\output\entrada-demo-A1B2C3\entrada.spa.ass" `
   --translations .\translations\entrada-demo-A1B2C3\ja\translations_all.json `
@@ -247,7 +325,7 @@ Los mapas actuales pertenecen al video trabajado en este repositorio. Para otro 
 ### 4. Generar SRT TV-Safe
 
 ```powershell
-python .\src\ass_to_tv_safe_srt.py `
+.\.venv\Scripts\python.exe .\src\ass_to_tv_safe_srt.py `
   --input-ass ".\output\entrada-demo-A1B2C3\entrada.spa.ass" `
   --output-srt ".\output\entrada-demo-A1B2C3\entrada.spa.srt"
 ```
@@ -255,7 +333,7 @@ python .\src\ass_to_tv_safe_srt.py `
 ### 5. Normalizar Espanol
 
 ```powershell
-python .\src\normalize_spanish_subtitles.py `
+.\.venv\Scripts\python.exe .\src\normalize_spanish_subtitles.py `
   --input-ass ".\output\entrada-demo-A1B2C3\entrada.spa.ass" `
   --input-srt ".\output\entrada-demo-A1B2C3\entrada.spa.srt" `
   --output-ass ".\output\entrada-demo-A1B2C3\entrada.spa.ass" `
@@ -349,7 +427,8 @@ La normalizacion:
 Puedes correr las pruebas unitarias con:
 
 ```powershell
-python -m unittest .\src\test_spanish_normalization.py .\src\test_language_profiles.py .\src\test_subtitle_text_to_ass.py .\src\test_workspace_and_terms.py
+powershell -ExecutionPolicy Bypass -File .\src\init_python_env.ps1
+.\.venv\Scripts\python.exe -m unittest .\src\test_spanish_normalization.py .\src\test_language_profiles.py .\src\test_subtitle_text_to_ass.py .\src\test_workspace_and_terms.py .\src\test_transcription_workflow.py
 ```
 
 ## Notas

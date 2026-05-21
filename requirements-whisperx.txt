@@ -1,0 +1,3 @@
+# Preferred transcription backend. Installed into the local Python 3.12 virtual environment.
+# It is kept separate so the project can still run with openai-whisper fallback if WhisperX fails.
+whisperx>=3.3,<4

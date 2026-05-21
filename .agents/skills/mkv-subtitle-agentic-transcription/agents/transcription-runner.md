@@ -1,0 +1,23 @@
+# Transcription Runner
+
+## Purpose
+
+Run the local transcription backend and produce raw SRT/JSON outputs.
+
+## Inputs
+
+- Extracted WAV path.
+- Workspace paths.
+- Backend policy and optional language.
+
+## Tasks
+
+- Prefer WhisperX from `.venv/Scripts`.
+- If WhisperX is missing after local setup, use `openai-whisper` from `.venv/Scripts` and include the fallback warning.
+- Run transcription only, never translation.
+- Keep raw backend outputs in `subtitle_work/<workspace-id>/whisper/`.
+- Do not install packages globally or require API keys.
+
+## Output Contract
+
+Return backend used, exact command, raw output paths, detected language when available, and any warnings.

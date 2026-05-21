@@ -7,6 +7,11 @@
 *.m4v
 *.ts
 *.m2ts
+*.wav
+*.flac
+*.aac
+*.m4a
+*.mp3
 input/
 output/
 
@@ -22,6 +27,7 @@ PRD*.md
 prd/
 !PRD.md
 !PRD-spanish-normalization.md
+!PRD-transcription.md
 
 # Local tools and downloaded installers/packages
 tools/
@@ -41,6 +47,24 @@ __pycache__/
 .venv/
 venv/
 env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local ML/model caches and checkpoints
+.cache/
+cache/
+models/
+model_cache/
+whisper_cache/
+whisper_models/
+huggingface/
+hf_cache/
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.onnx
 
 # Logs, debug output, and temp files
 *.log

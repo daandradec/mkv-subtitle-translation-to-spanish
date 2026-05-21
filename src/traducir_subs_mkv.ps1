@@ -18,7 +18,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $ScriptDir = Split-Path -Parent $PSCommandPath
-$ProjectRoot = Resolve-Path (Join-Path $ScriptDir "..")
+$ProjectRoot = (Resolve-Path (Join-Path $ScriptDir "..")).Path
 $InputDir = Join-Path $ProjectRoot "input"
 $SpanishTitle = "Espa$([char]0x00F1)ol LatAm"
 $MkvMergeCommand = Get-Command "mkvmerge" -ErrorAction SilentlyContinue
@@ -33,6 +33,22 @@ function Invoke-Checked {
     if ($LASTEXITCODE -ne 0) {
         throw "Command failed with exit code $LASTEXITCODE"
     }
+}
+
+function Initialize-PythonEnvironment {
+    $envJson = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $ScriptDir "init_python_env.ps1") `
+        -ProjectRoot $ProjectRoot `
+        -Json
+    if ($LASTEXITCODE -ne 0) {
+        throw "Python environment initialization failed."
+    }
+    $envInfo = ($envJson | Out-String) | ConvertFrom-Json
+    $env:VIRTUAL_ENV = [string]$envInfo.venv_dir
+    $env:PATH = "$($envInfo.scripts_dir);$env:PATH"
+    if ($envInfo.whisperx_warning) {
+        Write-Warning ([string]$envInfo.whisperx_warning)
+    }
+    return [string]$envInfo.python
 }
 
 function Get-InputMkvCandidates {
@@ -88,6 +104,8 @@ if ([System.IO.Path]::GetExtension($InputMkv).ToLowerInvariant() -ne ".mkv") {
     throw "El archivo de entrada debe ser un video MKV: $InputMkv"
 }
 
+$PythonExe = Initialize-PythonEnvironment
+
 function Resolve-ProjectPath {
     param([string]$PathValue)
     if ([System.IO.Path]::IsPathRooted($PathValue)) {
@@ -104,7 +122,7 @@ $workspaceArgs = @(
 if ($WorkspaceId) {
     $workspaceArgs += @("--workspace-id", $WorkspaceId)
 }
-$workspaceJson = & python $workspaceArgs
+$workspaceJson = & $PythonExe @workspaceArgs
 if ($LASTEXITCODE -ne 0) {
     throw "Workspace path generation failed."
 }
@@ -172,13 +190,14 @@ if ($SourceSubtitleStreamIndex -ge 0) {
 if ($SourceLanguageOverride) {
     $languageArgs += @("--language-override", $SourceLanguageOverride)
 }
-$languageJson = & python $languageArgs
+$languageJson = & $PythonExe @languageArgs
 if ($LASTEXITCODE -ne 0) {
     throw "Source subtitle language validation failed."
 }
 $languageInfo = ($languageJson | Out-String) | ConvertFrom-Json
 $SourceLanguage = [string]$languageInfo.source_language
 $SourceSubtitleStreamIndex = [int]$languageInfo.stream_index
+$SourceSubtitleCodec = ([string]$languageInfo.codec_name).ToLowerInvariant()
 if ($SourceMkvTrackId -lt 0 -and $languageInfo.mkv_track_id -ne $null) {
     $SourceMkvTrackId = [int]$languageInfo.mkv_track_id
 }
@@ -195,7 +214,7 @@ if (!$PSBoundParameters.ContainsKey("TranslationJson")) {
         "--language", $SourceLanguage,
         "--json"
     )
-    $resolvedMapsJson = & python $mapResolverArgs
+    $resolvedMapsJson = & $PythonExe @mapResolverArgs
     if ($LASTEXITCODE -ne 0) {
         throw "Translation map resolution failed."
     }
@@ -217,7 +236,32 @@ if ($TranslationJson.Count -eq 0) {
 }
 
 Write-Host "Extracting source subtitle stream 0:$SourceSubtitleStreamIndex..."
-Invoke-Checked { ffmpeg -y -v error -i $InputMkv -map "0:$SourceSubtitleStreamIndex" -c:s copy $EnglishAss }
+if ($SourceSubtitleCodec -in @("ass", "ssa")) {
+    Invoke-Checked { ffmpeg -y -v error -i $InputMkv -map "0:$SourceSubtitleStreamIndex" -c:s copy $EnglishAss }
+}
+elseif ($SourceSubtitleCodec -in @("subrip", "srt", "mov_text", "text")) {
+    $sourceTextSubtitle = [System.IO.Path]::ChangeExtension($EnglishAss, ".srt")
+    Invoke-Checked { ffmpeg -y -v error -i $InputMkv -map "0:$SourceSubtitleStreamIndex" -c:s srt $sourceTextSubtitle }
+    Invoke-Checked {
+        & $PythonExe (Join-Path $ScriptDir "subtitle_text_to_ass.py") `
+            --input $sourceTextSubtitle `
+            --output $EnglishAss `
+            --format srt
+    }
+}
+elseif ($SourceSubtitleCodec -in @("webvtt", "vtt")) {
+    $sourceTextSubtitle = [System.IO.Path]::ChangeExtension($EnglishAss, ".vtt")
+    Invoke-Checked { ffmpeg -y -v error -i $InputMkv -map "0:$SourceSubtitleStreamIndex" -c:s webvtt $sourceTextSubtitle }
+    Invoke-Checked {
+        & $PythonExe (Join-Path $ScriptDir "subtitle_text_to_ass.py") `
+            --input $sourceTextSubtitle `
+            --output $EnglishAss `
+            --format vtt
+    }
+}
+else {
+    throw "Unsupported source subtitle codec for extraction: $SourceSubtitleCodec"
+}
 
 $existingTranslationJson = @()
 foreach ($path in $TranslationJson) {
@@ -243,7 +287,7 @@ if ($existingTermMapJson.Count -gt 0) {
 
 Write-Host "Applying Spanish translations to ASS..."
 Invoke-Checked {
-    python (Join-Path $ScriptDir "ass_apply_translations.py") `
+        & $PythonExe (Join-Path $ScriptDir "ass_apply_translations.py") `
         --input-ass $EnglishAss `
         --output-ass $SpanishAss `
         --translations $existingTranslationJson `
@@ -254,7 +298,7 @@ Invoke-Checked {
 if ($TvSafeSrt) {
     Write-Host "Generating TV-safe Spanish SRT..."
     Invoke-Checked {
-        python (Join-Path $ScriptDir "ass_to_tv_safe_srt.py") `
+        & $PythonExe (Join-Path $ScriptDir "ass_to_tv_safe_srt.py") `
             --input-ass $SpanishAss `
             --output-srt $TvSafeSrt
     }
@@ -263,7 +307,7 @@ if ($TvSafeSrt) {
 if ($TvSafeSrt -and !$SkipSpanishNormalization) {
     Write-Host "Normalizing Spanish ASS and TV-safe SRT..."
     Invoke-Checked {
-        python (Join-Path $ScriptDir "normalize_spanish_subtitles.py") `
+        & $PythonExe (Join-Path $ScriptDir "normalize_spanish_subtitles.py") `
             --input-ass $SpanishAss `
             --input-srt $TvSafeSrt `
             --output-ass $SpanishAss `
