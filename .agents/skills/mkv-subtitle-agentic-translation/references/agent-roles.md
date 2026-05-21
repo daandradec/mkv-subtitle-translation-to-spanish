@@ -8,7 +8,7 @@ Do not create all roles at once. The main agent should run roles in dependency-a
 
 - Inputs: source MKV path, tool availability.
 - Tasks: run `ffprobe`, list video/audio/subtitle streams, detect subtitle codecs/languages, identify attachments/fonts, and recommend source subtitle track.
-- Output: JSON or markdown summary with selected track, rationale, and risks.
+- Output: JSON or markdown summary with selected ffprobe stream index, mkvmerge track id, rationale, subtitle candidates, workspace id, and risks.
 
 ## Semantic Segmenter
 
@@ -31,8 +31,8 @@ Do not create all roles at once. The main agent should run roles in dependency-a
 ## Spanish LatAm Linguistic Reviewer
 
 - Inputs: all translated units.
-- Tasks: normalize tone, syntax, punctuation, terminology, and continuity across grouped lines.
-- Output: reviewed translations plus required fixes.
+- Tasks: normalize tone, syntax, punctuation, terminology, and continuity across grouped lines. Build or refine a local term map for names, places, factions, ranks, honorifics, and recurring expressions.
+- Output: reviewed translations plus required fixes and glossary/term-map updates.
 
 ## Technical Validator
 

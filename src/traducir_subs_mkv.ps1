@@ -1,23 +1,25 @@
 param(
     [string]$InputMkv = "",
-    [int]$SourceSubtitleStreamIndex = 3,
-    [int]$SourceMkvTrackId = 3,
+    [int]$SourceSubtitleStreamIndex = -1,
+    [int]$SourceMkvTrackId = -1,
     [string]$SourceLanguageOverride = "",
-    [string]$EnglishAss = "subtitle_work\Love Live! Nijigasaki High School Idol Club the Movie - Chapter 2 [BD 1080p HEVC OPUS] [34C012E9].eng.ass",
-    [string]$SpanishAss = "subtitle_work\Love Live! Nijigasaki High School Idol Club the Movie - Chapter 2 [BD 1080p HEVC OPUS] [34C012E9].spa.ass",
+    [string]$WorkspaceId = "",
+    [string]$EnglishAss = "",
+    [string]$SpanishAss = "",
     [string]$TvSafeSrt = "",
-    [string]$NormalizationReport = "subtitle_work\spanish_normalization_report.json",
+    [string]$NormalizationReport = "",
     [switch]$SkipSpanishNormalization,
     [ValidateSet("ass", "srt", "both")]
     [string]$EmbeddedSubtitleFormat = "both",
-    [string]$OutputMkv = "Love Live! Nijigasaki High School Idol Club the Movie - Chapter 2 [BD 1080p HEVC OPUS] [34C012E9].spa.mkv",
+    [string]$OutputMkv = "",
     [string[]]$TranslationJson = @(
         "translations\translations_dialogue_part1.json",
         "translations\translations_dialogue_part2.json",
         "translations\translations_signs.json",
         "translations\translations_songs.json",
         "translations\translations_songs_extra.json"
-    )
+    ),
+    [string[]]$TermMapJson = @()
 )
 
 $ErrorActionPreference = "Stop"
@@ -92,6 +94,53 @@ if ([System.IO.Path]::GetExtension($InputMkv).ToLowerInvariant() -ne ".mkv") {
     throw "El archivo de entrada debe ser un video MKV: $InputMkv"
 }
 
+function Resolve-ProjectPath {
+    param([string]$PathValue)
+    if ([System.IO.Path]::IsPathRooted($PathValue)) {
+        return $PathValue
+    }
+    return (Join-Path $ProjectRoot $PathValue)
+}
+
+$workspaceArgs = @(
+    (Join-Path $ScriptDir "subtitle_workspace.py"),
+    "--input-mkv", $InputMkv,
+    "--json"
+)
+if ($WorkspaceId) {
+    $workspaceArgs += @("--workspace-id", $WorkspaceId)
+}
+$workspaceJson = & python $workspaceArgs
+if ($LASTEXITCODE -ne 0) {
+    throw "Workspace path generation failed."
+}
+$workspaceInfo = ($workspaceJson | Out-String) | ConvertFrom-Json
+$WorkspaceId = [string]$workspaceInfo.workspace_id
+$SubtitleWorkDir = Resolve-ProjectPath ([string]$workspaceInfo.subtitle_work_dir)
+$TranslationsWorkDir = Resolve-ProjectPath ([string]$workspaceInfo.translations_dir)
+if (!(Test-Path -LiteralPath $SubtitleWorkDir)) {
+    New-Item -ItemType Directory -Path $SubtitleWorkDir | Out-Null
+}
+if (!(Test-Path -LiteralPath $TranslationsWorkDir)) {
+    New-Item -ItemType Directory -Path $TranslationsWorkDir | Out-Null
+}
+
+if (!$EnglishAss) {
+    $EnglishAss = Resolve-ProjectPath ([string]$workspaceInfo.source_ass)
+}
+if (!$SpanishAss) {
+    $SpanishAss = Resolve-ProjectPath ([string]$workspaceInfo.spanish_ass)
+}
+if (!$TvSafeSrt) {
+    $TvSafeSrt = Resolve-ProjectPath ([string]$workspaceInfo.tv_safe_srt)
+}
+if (!$NormalizationReport) {
+    $NormalizationReport = Resolve-ProjectPath ([string]$workspaceInfo.normalization_report)
+}
+if (!$OutputMkv) {
+    $OutputMkv = Resolve-ProjectPath ([string]$workspaceInfo.output_mkv)
+}
+
 if ($null -eq $MkvMergeCommand -and !(Test-Path -LiteralPath $LocalMkvMerge)) {
     throw "mkvmerge not found in PATH or local tools folder. Install MKVToolNix first, for example: choco install mkvtoolnix -y"
 }
@@ -121,9 +170,11 @@ Write-Host "Validating source subtitle language..."
 $languageArgs = @(
     (Join-Path $ScriptDir "subtitle_language.py"),
     "--input-mkv", $InputMkv,
-    "--stream-index", $SourceSubtitleStreamIndex,
     "--json"
 )
+if ($SourceSubtitleStreamIndex -ge 0) {
+    $languageArgs += @("--stream-index", $SourceSubtitleStreamIndex)
+}
 if ($SourceLanguageOverride) {
     $languageArgs += @("--language-override", $SourceLanguageOverride)
 }
@@ -133,12 +184,18 @@ if ($LASTEXITCODE -ne 0) {
 }
 $languageInfo = ($languageJson | Out-String) | ConvertFrom-Json
 $SourceLanguage = [string]$languageInfo.source_language
+$SourceSubtitleStreamIndex = [int]$languageInfo.stream_index
+if ($SourceMkvTrackId -lt 0 -and $languageInfo.mkv_track_id -ne $null) {
+    $SourceMkvTrackId = [int]$languageInfo.mkv_track_id
+}
+if ($SourceMkvTrackId -lt 0) {
+    $SourceMkvTrackId = $SourceSubtitleStreamIndex
+}
 Write-Host "Detected source language: $($languageInfo.source_language_name) ($SourceLanguage)"
+Write-Host "Selected subtitle stream: 0:$SourceSubtitleStreamIndex (mkvmerge track $SourceMkvTrackId)"
 
 if ($SourceLanguage -ne "en" -and !$PSBoundParameters.ContainsKey("TranslationJson")) {
-    $videoStem = [System.IO.Path]::GetFileNameWithoutExtension($InputMkv)
-    $safeVideoStem = ($videoStem -replace '[\\/:*?"<>|]', '_')
-    $agenticTranslationDir = Join-Path "translations" (Join-Path $safeVideoStem $SourceLanguage)
+    $agenticTranslationDir = Join-Path $TranslationsWorkDir $SourceLanguage
     if (!(Test-Path -LiteralPath $agenticTranslationDir)) {
         New-Item -ItemType Directory -Path $agenticTranslationDir | Out-Null
     }
@@ -165,13 +222,25 @@ if ($existingTranslationJson.Count -eq 0) {
     throw "No translation JSON files found. Expected at least one of: $($TranslationJson -join ', ')"
 }
 
+$existingTermMapJson = @()
+foreach ($path in $TermMapJson) {
+    if (Test-Path -LiteralPath $path) {
+        $existingTermMapJson += $path
+    }
+}
+$termMapArgs = @()
+if ($existingTermMapJson.Count -gt 0) {
+    $termMapArgs = @("--term-map") + $existingTermMapJson
+}
+
 Write-Host "Applying Spanish translations to ASS..."
 Invoke-Checked {
     python (Join-Path $ScriptDir "ass_apply_translations.py") `
         --input-ass $EnglishAss `
         --output-ass $SpanishAss `
         --translations $existingTranslationJson `
-        --blank-translated-english-fx
+        --blank-translated-english-fx `
+        @termMapArgs
 }
 
 if ($TvSafeSrt) {
@@ -204,13 +273,28 @@ if ($EmbeddedSubtitleFormat -in @("srt", "both") -and !$TvSafeSrt) {
     throw "EmbeddedSubtitleFormat '$EmbeddedSubtitleFormat' requires -TvSafeSrt."
 }
 
+$mkvMergePath = if ($null -ne $MkvMergeCommand) { $MkvMergeCommand.Source } else { $LocalMkvMerge }
+$mkvInfoJson = & $mkvMergePath -J $InputMkv
+if ($LASTEXITCODE -ne 0) {
+    throw "Could not inspect input MKV with mkvmerge."
+}
+$mkvInfo = ($mkvInfoJson | Out-String) | ConvertFrom-Json
+$sourceSubtitleDefaultArgs = @()
+foreach ($track in $mkvInfo.tracks) {
+    if ($track.type -eq "subtitles") {
+        $sourceSubtitleDefaultArgs += @("--default-track-flag", "$($track.id)`:no")
+    }
+}
+if ($sourceSubtitleDefaultArgs.Count -eq 0) {
+    $sourceSubtitleDefaultArgs += @("--default-track-flag", "$SourceMkvTrackId`:no")
+}
+
 Write-Host "Remuxing MKV with MKVToolNix without re-encoding video/audio..."
 Invoke-Checked {
-    $mkvMergePath = if ($null -ne $MkvMergeCommand) { $MkvMergeCommand.Source } else { $LocalMkvMerge }
     if ($EmbeddedSubtitleFormat -eq "ass") {
         & $mkvMergePath `
             --output $OutputMkv `
-            --default-track-flag "$SourceMkvTrackId`:no" `
+            @sourceSubtitleDefaultArgs `
             $InputMkv `
             --language 0:spa `
             --track-name "0:$SpanishTitle" `
@@ -220,7 +304,7 @@ Invoke-Checked {
     elseif ($EmbeddedSubtitleFormat -eq "srt") {
         & $mkvMergePath `
             --output $OutputMkv `
-            --default-track-flag "$SourceMkvTrackId`:no" `
+            @sourceSubtitleDefaultArgs `
             $InputMkv `
             --language 0:spa `
             --track-name "0:$SpanishTitle TV-safe" `
@@ -230,7 +314,7 @@ Invoke-Checked {
     else {
         & $mkvMergePath `
             --output $OutputMkv `
-            --default-track-flag "$SourceMkvTrackId`:no" `
+            @sourceSubtitleDefaultArgs `
             $InputMkv `
             --language 0:spa `
             --track-name "0:$SpanishTitle" `

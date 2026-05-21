@@ -116,6 +116,10 @@ def normalize_language_code(language: str) -> str:
     key = language.strip().casefold()
     if key in ALIAS_TO_CODE:
         return ALIAS_TO_CODE[key]
+    if "-" in key:
+        base_key = key.split("-", 1)[0]
+        if base_key in ALIAS_TO_CODE:
+            return ALIAS_TO_CODE[base_key]
     raise UnsupportedLanguageError(language)
 
 

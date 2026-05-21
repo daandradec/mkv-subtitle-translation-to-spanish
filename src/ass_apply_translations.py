@@ -5,6 +5,8 @@ import re
 from collections import defaultdict
 from pathlib import Path
 
+from translation_terms import apply_terms, load_term_maps
+
 
 DIALOGUE_PREFIX = "Dialogue: "
 
@@ -104,12 +106,21 @@ def main():
         action="store_true",
         help="Blank original per-letter English FX song lines when a Spanish song translation is present.",
     )
+    parser.add_argument(
+        "--term-map",
+        nargs="*",
+        default=[],
+        help="Optional JSON glossary maps for normalizing names/terms after translation.",
+    )
     args = parser.parse_args()
 
     input_path = Path(args.input_ass)
     output_path = Path(args.output_ass)
     lines = input_path.read_text(encoding="utf-8-sig").splitlines()
     event_map, song_map = load_json_maps(args.translations)
+    term_map = load_term_maps(args.term_map)
+    event_map = {key: apply_terms(value, term_map) for key, value in event_map.items()}
+    song_map = {key: apply_terms(value, term_map) for key, value in song_map.items()}
     translated_song_keys = set(song_map)
 
     output = []

@@ -43,8 +43,10 @@ C:\Program Files\MKVToolNix
 - `src\normalize_spanish_subtitles.py`: normaliza el texto visible del ASS y regenera el SRT TV-safe desde el ASS normalizado.
 - `src\subtitle_text_to_ass.py`: convierte subtitulos extraidos `.srt`, `.vtt` o `.webvtt` a un ASS simple para que puedan entrar a etapas que esperan ASS.
 - `src\subtitle_language.py` y `src\languages\`: validan que la pista fuente este en la lista de idiomas soportados.
+- `src\subtitle_workspace.py`: crea carpetas dedicadas por ejecucion para `subtitle_work/`, `translations/` y `output/`.
+- `src\translation_terms.py`: aplica glosarios locales para normalizar nombres propios y terminos recurrentes.
 - `src\test_*.py`: pruebas unitarias.
-- `translations\translations_*.json`: mapas de traduccion locales. Esta carpeta esta ignorada por Git y no se sube al repositorio.
+- `translations\`: mapas de traduccion locales. Esta carpeta esta ignorada por Git y no se sube al repositorio. El caso ingles conserva mapas `translations\translations_*.json`; las ejecuciones nuevas usan `translations\<workspace-id>\<idioma>\`.
 - `.gitignore`: excluye videos, subtitulos extraidos, caches y temporales.
 
 El video fuente y el MKV final no se versionan. Por defecto, coloca entradas en `input/` y revisa resultados en `output/`.
@@ -54,6 +56,17 @@ Validaciones de entrada:
 - Si `input/` no contiene ningun MKV y no indicas `-InputMkv`, el flujo se detiene. Un archivo de video `.mkv` con subtitulos incrustados es obligatorio para ejecutar la traduccion.
 - Si `input/` contiene varios MKV, el flujo no elige automaticamente. Debes indicar exactamente un archivo con `-InputMkv`.
 - Si el MKV seleccionado no tiene subtitulos incrustados, el flujo se detiene y avisa que no se encontraron subtitulos en el archivo original para traducir a espanol.
+- `input/` es la carpeta canonica. Si escribes `inputs\archivo.mkv`, corrige a `input\archivo.mkv` cuando ese archivo exista.
+
+Cada ejecucion crea workspaces dedicados para no mezclar artefactos de distintos videos:
+
+```text
+subtitle_work\<prefijo-24>-<codigo-6>\
+translations\<prefijo-24>-<codigo-6>\
+output\<prefijo-24>-<codigo-6>\
+```
+
+El prefijo se arma con palabras completas del nombre del MKV, hasta 24 caracteres, y el mismo identificador se usa en `subtitle_work`, `translations` y `output`.
 
 ## Flujo Principal con PowerShell
 
@@ -68,31 +81,30 @@ Luego ejecuta:
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\src\traducir_subs_mkv.ps1 `
   -InputMkv ".\input\Love Live! Nijigasaki High School Idol Club the Movie - Chapter 2 [BD 1080p HEVC OPUS] [34C012E9].mkv" `
-  -SpanishAss ".\output\Love Live! Nijigasaki High School Idol Club the Movie - Chapter 2 [BD 1080p HEVC OPUS] [34C012E9].spa.ass" `
-  -TvSafeSrt ".\output\Love Live! Nijigasaki High School Idol Club the Movie - Chapter 2 [BD 1080p HEVC OPUS] [34C012E9].spa.srt" `
-  -EmbeddedSubtitleFormat both `
-  -OutputMkv ".\output\portable\Love Live! Nijigasaki High School Idol Club the Movie - Chapter 2 [BD 1080p HEVC OPUS] [34C012E9].spa.mkv"
+  -EmbeddedSubtitleFormat both
 ```
 
 El script hace lo siguiente:
 
-1. Extrae la pista de subtitulos `0:3` a `subtitle_work\*.eng.ass`.
-2. Aplica las traducciones desde los JSON.
-3. Genera `output\*.spa.ass`.
-4. Genera `output\*.spa.srt` cuando pasas `-TvSafeSrt`.
-5. Normaliza el espanol visible del ASS y regenera el SRT TV-safe desde ese ASS normalizado.
-6. Crea un MKV nuevo con `mkvmerge`, sin recodificar video/audio. Usa `-EmbeddedSubtitleFormat both` para incrustar ASS y SRT, `srt` para solo TV-safe, o `ass` para solo ASS estilizado.
-7. Marca `Español LatAm TV-safe` como `spa` y `default`; deja `Español LatAm` ASS incrustado como alternativa no-default.
+1. Valida el MKV de entrada y selecciona la mejor pista textual soportada cuando no indicas `-SourceSubtitleStreamIndex`.
+2. Crea un workspace dedicado en `subtitle_work\<workspace-id>\`, `translations\<workspace-id>\` y `output\<workspace-id>\`.
+3. Extrae la pista de subtitulos seleccionada a `subtitle_work\<workspace-id>\*.source.ass`.
+4. Aplica las traducciones desde los JSON y, si se pasan, glosarios con `-TermMapJson`.
+5. Genera `output\<workspace-id>\*.spa.ass`.
+6. Genera `output\<workspace-id>\*.spa.srt` cuando pasas `-TvSafeSrt`.
+7. Normaliza el espanol visible del ASS y regenera el SRT TV-safe desde ese ASS normalizado.
+8. Crea un MKV nuevo con `mkvmerge`, sin recodificar video/audio. Usa `-EmbeddedSubtitleFormat both` para incrustar ASS y SRT, `srt` para solo TV-safe, o `ass` para solo ASS estilizado.
+9. Conserva las pistas originales pero desactiva el default en todos los subtitulos originales. La pista `Español LatAm TV-safe` queda como `spa` y `default`; `Español LatAm` ASS queda incrustada como alternativa no-default.
 
 Salida por defecto:
 
 ```text
-output\portable\Love Live! Nijigasaki High School Idol Club the Movie - Chapter 2 [BD 1080p HEVC OPUS] [34C012E9].spa.mkv
-output\Love Live! Nijigasaki High School Idol Club the Movie - Chapter 2 [BD 1080p HEVC OPUS] [34C012E9].spa.ass
-output\Love Live! Nijigasaki High School Idol Club the Movie - Chapter 2 [BD 1080p HEVC OPUS] [34C012E9].spa.srt
+output\<workspace-id>\Love Live! Nijigasaki High School Idol Club the Movie - Chapter 2 [BD 1080p HEVC OPUS] [34C012E9].spa.mkv
+output\<workspace-id>\Love Live! Nijigasaki High School Idol Club the Movie - Chapter 2 [BD 1080p HEVC OPUS] [34C012E9].spa.ass
+output\<workspace-id>\Love Live! Nijigasaki High School Idol Club the Movie - Chapter 2 [BD 1080p HEVC OPUS] [34C012E9].spa.srt
 ```
 
-Este flujo actual esta preparado para el caso ya trabajado: MKV con pista ASS fuente en `0:3` y mapas de traduccion existentes. Para otros idiomas, otras pistas o subtitulos SRT/VTT incrustados, usa primero la inspeccion con agentes o los scripts auxiliares descritos abajo.
+Este flujo actual esta preparado para el caso ya trabajado y tambien puede seleccionar automaticamente una pista textual soportada cuando no se pasa indice. Para otros idiomas, mapas nuevos o subtitulos SRT/VTT incrustados, usa primero la inspeccion con agentes o los scripts auxiliares descritos abajo.
 
 ## Idiomas Fuente Soportados
 
@@ -110,7 +122,7 @@ El flujo solo permite traducir hacia espanol desde estos idiomas fuente:
 10. Coreano
 11. Italiano
 
-Si la metadata de la pista de subtitulos indica otro idioma, `src\traducir_subs_mkv.ps1` detiene la ejecucion y muestra la lista disponible. Para ingles se conserva el comportamiento actual con mapas locales en `translations\`. Para los otros idiomas soportados, la ruta recomendada es usar la skill con subagentes para generar mapas JSON locales en `translations\<video>\<idioma>\` y luego pasarlos al script con `-TranslationJson`.
+Si la metadata de la pista de subtitulos indica otro idioma, `src\traducir_subs_mkv.ps1` detiene la ejecucion y muestra la lista disponible. Para ingles se conserva el comportamiento actual con mapas locales en `translations\`. Para los otros idiomas soportados, la ruta recomendada es usar la skill con subagentes para generar mapas JSON locales en `translations\<workspace-id>\<idioma>\` y luego pasarlos al script con `-TranslationJson`.
 
 ## Uso con Otros Nombres
 
@@ -119,20 +131,21 @@ Puedes pasar rutas personalizadas:
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\src\traducir_subs_mkv.ps1 `
   -InputMkv ".\entrada.mkv" `
-  -EnglishAss ".\subtitle_work\entrada.eng.ass" `
-  -SpanishAss ".\output\entrada.spa.ass" `
-  -TvSafeSrt ".\output\entrada.spa.srt" `
+  -WorkspaceId "entrada-demo-A1B2C3" `
+  -EnglishAss ".\subtitle_work\entrada-demo-A1B2C3\entrada.source.ass" `
+  -SpanishAss ".\output\entrada-demo-A1B2C3\entrada.spa.ass" `
+  -TvSafeSrt ".\output\entrada-demo-A1B2C3\entrada.spa.srt" `
   -EmbeddedSubtitleFormat both `
-  -OutputMkv ".\output\portable\entrada.spa.mkv"
+  -OutputMkv ".\output\entrada-demo-A1B2C3\entrada.spa.mkv"
 ```
 
-Si usas otro MKV, revisa primero el indice de la pista de subtitulos con:
+Si usas otro MKV, puedes dejar que el script seleccione automaticamente la mejor pista textual soportada, o revisar primero el indice de la pista de subtitulos con:
 
 ```powershell
 ffprobe -hide_banner -i ".\entrada.mkv"
 ```
 
-El script actual extrae la pista `0:3` y desactiva el track `3` de mkvmerge por defecto. Si tu archivo usa otra pista, pasa `-SourceSubtitleStreamIndex` y, cuando el track ID de mkvmerge sea distinto, `-SourceMkvTrackId`:
+La seleccion automatica evita pistas `Forced` cuando hay pistas completas, evita CC/SDH salvo que se indique, prefiere mayor cobertura de eventos/duracion y considera la metadata del audio. Si quieres forzar otra pista, pasa `-SourceSubtitleStreamIndex` y, cuando el track ID de mkvmerge sea distinto, `-SourceMkvTrackId`:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\src\traducir_subs_mkv.ps1 `
@@ -151,18 +164,22 @@ Inspecciona el contenedor:
 
 ```powershell
 ffprobe -hide_banner -i ".\input\entrada.mkv"
+python .\src\subtitle_language.py --input-mkv ".\input\entrada.mkv" --list-candidates
+python .\src\subtitle_workspace.py --input-mkv ".\input\entrada.mkv" --workspace-id "entrada-demo-A1B2C3"
 ```
 
 Extrae una pista ASS:
 
 ```powershell
-ffmpeg -y -i ".\input\entrada.mkv" -map 0:3 -c:s copy ".\subtitle_work\entrada.ass"
+$streamIndex = 5
+ffmpeg -y -i ".\input\entrada.mkv" -map "0:$streamIndex" -c:s copy ".\subtitle_work\entrada-demo-A1B2C3\entrada.source.ass"
 ```
 
 Extrae una pista SRT o VTT si el contenedor la trae como texto:
 
 ```powershell
-ffmpeg -y -i ".\input\entrada.mkv" -map 0:s:0 -c:s copy ".\subtitle_work\entrada.srt"
+$streamIndex = 5
+ffmpeg -y -i ".\input\entrada.mkv" -map "0:$streamIndex" -c:s copy ".\subtitle_work\entrada-demo-A1B2C3\entrada.source.srt"
 ```
 
 El indice real puede variar; usa el resultado de `ffprobe`.
@@ -173,16 +190,16 @@ Cuando la pista fuente extraida sea `.srt`, `.vtt` o `.webvtt`, conviertela a AS
 
 ```powershell
 python .\src\subtitle_text_to_ass.py `
-  --input ".\subtitle_work\entrada.srt" `
-  --output ".\subtitle_work\entrada.ass"
+  --input ".\subtitle_work\entrada-demo-A1B2C3\entrada.source.srt" `
+  --output ".\subtitle_work\entrada-demo-A1B2C3\entrada.source.ass"
 ```
 
 Para VTT:
 
 ```powershell
 python .\src\subtitle_text_to_ass.py `
-  --input ".\subtitle_work\entrada.vtt" `
-  --output ".\subtitle_work\entrada.ass" `
+  --input ".\subtitle_work\entrada-demo-A1B2C3\entrada.source.vtt" `
+  --output ".\subtitle_work\entrada-demo-A1B2C3\entrada.source.ass" `
   --format vtt
 ```
 
@@ -192,50 +209,52 @@ Este modulo preserva tiempos, limpia marcas comunes de SRT/VTT y genera eventos 
 
 ```powershell
 python .\src\ass_apply_translations.py `
-  --input-ass ".\subtitle_work\entrada.ass" `
-  --output-ass ".\output\entrada.spa.ass" `
-  --translations .\translations\translations_dialogue_part1.json .\translations\translations_dialogue_part2.json .\translations\translations_signs.json .\translations\translations_songs.json .\translations\translations_songs_extra.json `
+  --input-ass ".\subtitle_work\entrada-demo-A1B2C3\entrada.source.ass" `
+  --output-ass ".\output\entrada-demo-A1B2C3\entrada.spa.ass" `
+  --translations .\translations\entrada-demo-A1B2C3\ja\translations_all.json `
+  --term-map .\translations\entrada-demo-A1B2C3\ja\term_map.json `
   --blank-translated-english-fx
 ```
 
-Los mapas actuales pertenecen al video trabajado en este repositorio. Para otro video o idioma, primero deben generarse nuevos mapas de traduccion.
+Los mapas actuales pertenecen al video trabajado en este repositorio. Para otro video o idioma, primero deben generarse nuevos mapas de traduccion dentro del workspace de `translations`.
 
 ### 4. Generar SRT TV-Safe
 
 ```powershell
 python .\src\ass_to_tv_safe_srt.py `
-  --input-ass ".\output\entrada.spa.ass" `
-  --output-srt ".\output\entrada.spa.srt"
+  --input-ass ".\output\entrada-demo-A1B2C3\entrada.spa.ass" `
+  --output-srt ".\output\entrada-demo-A1B2C3\entrada.spa.srt"
 ```
 
 ### 5. Normalizar Espanol
 
 ```powershell
 python .\src\normalize_spanish_subtitles.py `
-  --input-ass ".\output\entrada.spa.ass" `
-  --input-srt ".\output\entrada.spa.srt" `
-  --output-ass ".\output\entrada.spa.ass" `
-  --output-srt ".\output\entrada.spa.srt" `
-  --report ".\subtitle_work\spanish_normalization_report.json"
+  --input-ass ".\output\entrada-demo-A1B2C3\entrada.spa.ass" `
+  --input-srt ".\output\entrada-demo-A1B2C3\entrada.spa.srt" `
+  --output-ass ".\output\entrada-demo-A1B2C3\entrada.spa.ass" `
+  --output-srt ".\output\entrada-demo-A1B2C3\entrada.spa.srt" `
+  --report ".\subtitle_work\entrada-demo-A1B2C3\spanish_normalization_report.json"
 ```
 
 ### 6. Remux Manual con Ambas Pistas
 
 ```powershell
-mkvmerge --output ".\output\portable\entrada.spa.mkv" `
-  --default-track-flag 3:no `
+mkvmerge --output ".\output\entrada-demo-A1B2C3\entrada.spa.mkv" `
+  --default-track-flag <subtitle-track-id-1>:no `
+  --default-track-flag <subtitle-track-id-2>:no `
   ".\input\entrada.mkv" `
   --language 0:spa `
   --track-name "0:Español LatAm" `
   --default-track-flag 0:no `
-  ".\output\entrada.spa.ass" `
+  ".\output\entrada-demo-A1B2C3\entrada.spa.ass" `
   --language 0:spa `
   --track-name "0:Español LatAm TV-safe" `
   --default-track-flag 0:yes `
-  ".\output\entrada.spa.srt"
+  ".\output\entrada-demo-A1B2C3\entrada.spa.srt"
 ```
 
-El numero `3` en `--default-track-flag 3:no` es el track ID de mkvmerge para la pista de subtitulos original en este release. Verificalo con `mkvmerge -J`.
+Los numeros en `--default-track-flag <id>:no` son los track IDs de mkvmerge para las pistas de subtitulos originales. Desactiva todas las pistas originales para que solo la pista espanola deseada quede como default. Verificalo con `mkvmerge -J`.
 
 ## Flujo con Skill y Agentes
 
@@ -254,13 +273,16 @@ Puedes invocarla desde Codex asi:
 Con la skill, el agente principal debe coordinar subagentes para:
 
 - inspeccionar el contenedor y elegir la pista fuente correcta;
+- evitar pistas `Forced` o CC como fuente principal cuando existan pistas completas;
 - decidir si la pista es ASS, SRT, VTT u otro formato;
+- crear workspaces dedicados en `subtitle_work/<workspace-id>/`, `translations/<workspace-id>/` y `output/<workspace-id>/`;
 - convertir SRT/VTT a ASS con `src\subtitle_text_to_ass.py` cuando haga falta;
 - segmentar semanticamente dialogos, signos y canciones;
 - traducir o aplicar mapas de traduccion disponibles;
+- aplicar glosarios locales para nombres, lugares, facciones y rangos;
 - revisar naturalidad en espanol latino;
 - generar ASS, SRT TV-safe y MKV portable;
-- validar pistas, default flags, ausencia de basura visual y ausencia de subtitulos `[Local]` en `output\portable`.
+- validar pistas embebidas, default flags y ausencia de basura visual. Para comprobar ausencia de pistas `[Local]`, abrir o copiar solo el MKV, sin los `.ass`/`.srt` auxiliares del mismo `output\<workspace-id>`.
 
 La skill describe el flujo objetivo para soportar mas casos que el script PowerShell fijo. El script actual sigue siendo reproducible para el release ya traducido; la skill es la ruta adecuada cuando el archivo, idioma, formato de subtitulo o indice de pista no coinciden con ese caso.
 
@@ -296,16 +318,16 @@ La normalizacion:
 - conserva tiempos, estilos, capas y solapamientos;
 - evita tocar eventos tecnicos, dibujos, romaji, kanji y FX;
 - regenera el SRT TV-safe con el mismo texto visible normalizado para eventos equivalentes;
-- escribe un reporte en `subtitle_work\spanish_normalization_report.json`.
+- escribe un reporte en `subtitle_work\<workspace-id>\spanish_normalization_report.json`.
 
 Puedes correr las pruebas unitarias con:
 
 ```powershell
-python -m unittest .\src\test_spanish_normalization.py .\src\test_language_profiles.py
+python -m unittest .\src\test_spanish_normalization.py .\src\test_language_profiles.py .\src\test_subtitle_text_to_ass.py .\src\test_workspace_and_terms.py
 ```
 
 ## Notas
 
-- Los subtitulos `[Local]` no vienen del MKV: aparecen cuando el reproductor detecta `.ass` o `.srt` externos en la misma carpeta. Para revisar o copiar a USB, usa el MKV de `output\portable\`, que queda separado de esos archivos auxiliares.
+- Los subtitulos `[Local]` no vienen del MKV: aparecen cuando el reproductor detecta `.ass` o `.srt` externos en la misma carpeta. Para revisar o copiar a USB, usa el MKV de `output\<workspace-id>\`. Si copias tambien los `.ass`/`.srt` auxiliares al mismo destino, algunos reproductores los listaran como pistas locales externas.
 - `subtitle_work/` esta ignorado porque contiene subtitulos generados/intermedios.
 - Los MKV estan ignorados para evitar subir archivos grandes al repositorio.
