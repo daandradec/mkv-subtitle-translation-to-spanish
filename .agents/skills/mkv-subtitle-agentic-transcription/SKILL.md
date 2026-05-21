@@ -1,6 +1,6 @@
 ---
 name: mkv-subtitle-agentic-transcription
-description: Agentic workflow for MKV files without embedded subtitles: transcribe original-language speech from local audio with WhisperX when available or openai-whisper fallback, generate SRT/ASS subtitles, embed them into a new MKV, and hand the result to mkv-subtitle-agentic-translation.
+description: "Agentic workflow for MKV files without embedded subtitles: transcribe original-language speech from local audio with WhisperX when available or openai-whisper fallback, generate SRT/ASS subtitles, embed them into a new MKV, and hand the result to mkv-subtitle-agentic-translation."
 ---
 
 # MKV Subtitle Agentic Transcription
