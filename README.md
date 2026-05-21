@@ -1,6 +1,6 @@
 # MKV Subtitle Translation to Spanish
 
-Workflow reproducible para extraer una pista ASS en ingles desde un MKV, aplicar traducciones al espanol y crear una copia del MKV con dos pistas espanolas embebidas: `Español LatAm` en ASS y `Español LatAm TV-safe` en SRT para reproductores o televisores que renderizan mal ASS complejo.
+Workflow reproducible para extraer una pista de subtitulos textual desde un MKV, traducirla al espanol LatAm y crear una copia del MKV con dos pistas espanolas embebidas: `Español LatAm` en ASS y `Español LatAm TV-safe` en SRT para reproductores o televisores que renderizan mal ASS complejo.
 
 El repositorio contiene los scripts y mapas de traduccion. Los videos, subtitulos extraidos y archivos de trabajo pesados quedan ignorados por Git.
 
@@ -90,7 +90,7 @@ El script hace lo siguiente:
 1. Valida el MKV de entrada y selecciona la mejor pista textual soportada cuando no indicas `-SourceSubtitleStreamIndex`.
 2. Crea un workspace dedicado en `subtitle_work\<workspace-id>\`, `translations\<workspace-id>\` y `output\<workspace-id>\`.
 3. Extrae la pista de subtitulos seleccionada a `subtitle_work\<workspace-id>\*.source.ass`.
-4. Aplica las traducciones desde los JSON y, si se pasan, glosarios con `-TermMapJson`.
+4. Resuelve mapas de traduccion desde `translations\<workspace-id>\<idioma>\` si no pasas `-TranslationJson`.
 5. Genera `output\<workspace-id>\*.spa.ass`.
 6. Genera `output\<workspace-id>\*.spa.srt` cuando pasas `-TvSafeSrt`.
 7. Normaliza el espanol visible del ASS y regenera el SRT TV-safe desde ese ASS normalizado.
@@ -124,6 +124,31 @@ El flujo solo permite traducir hacia espanol desde estos idiomas fuente:
 11. Italiano
 
 Si la metadata de la pista de subtitulos indica otro idioma, `src\traducir_subs_mkv.ps1` detiene la ejecucion y muestra la lista disponible. Para cualquier idioma soportado, incluido ingles, la ruta recomendada es usar la skill con subagentes para generar o validar mapas JSON locales en `translations\<workspace-id>\<idioma>\`. Si no pasas `-TranslationJson`, el script resuelve automaticamente esos mapas desde el workspace.
+
+## Mapas de Traduccion
+
+El flujo actual usa un esquema unico para todos los idiomas:
+
+```text
+translations\<workspace-id>\<idioma>\translations_all.json
+translations\<workspace-id>\<idioma>\translations_chunk_01.json
+translations\<workspace-id>\<idioma>\translations_dialogue_part1.json
+```
+
+El idioma es el codigo detectado por el pipeline, por ejemplo:
+
+```text
+translations\Love-Live-Nijigasaki-77826F\en\
+translations\NIPPON-SANGOKU-2E6FBC\ja\
+```
+
+Reglas importantes:
+
+- Ingles ya no usa mapas sueltos en la raiz de `translations/` como comportamiento principal.
+- Si hay un `translations_all.json`, el script lo prefiere sobre mapas parciales.
+- Si no existe `translations_all.json`, el script usa los archivos `translations_*.json` dentro de la carpeta del idioma.
+- Los mapas antiguos de ingles pueden reutilizarse, pero deben copiarse o migrarse a `translations\<workspace-id>\en\`.
+- Si no existen mapas para el workspace e idioma detectado, el script crea la carpeta esperada y se detiene para que el flujo agéntico genere los JSON antes de reintentar.
 
 ## Uso con Otros Nombres
 

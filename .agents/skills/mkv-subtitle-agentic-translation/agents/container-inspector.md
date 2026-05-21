@@ -20,7 +20,7 @@ Spawn this subagent before extraction or translation, especially when the source
 - Run `ffprobe` or equivalent inspection.
 - List video, audio, subtitle, attachment, and chapter streams.
 - Detect subtitle languages, codecs, default flags, titles, and durations.
-- Report "No se encontraron subtítulos incrustados en el archivo original para traducir a español." when the selected MKV has no subtitle streams.
+- When the selected MKV has no subtitle streams, report: "No se encontraron subtítulos incrustados en el archivo original, por lo que este flujo no puede traducirlo a español. Cuando quieras crear subtítulos desde el audio del video, usa la skill `mkv-subtitle-agentic-transcription`, que estará orientada a transcribir las voces y generar subtítulos base para un flujo posterior de traducción."
 - Recommend exactly one source subtitle stream for the run unless the user must decide. Exclude `Forced` tracks when complete tracks exist, avoid CC/SDH unless requested, prefer higher event count/duration, and prefer the likely original/source-language track when metadata supports it.
 - Return both the ffprobe stream index and mkvmerge track id for the selected subtitle track.
 - Identify risks such as PGS/image subtitles, missing fonts, multiple editions, or absent language metadata.

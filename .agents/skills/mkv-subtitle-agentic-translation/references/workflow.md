@@ -33,7 +33,7 @@
 - When no exact stream is provided, inspect all subtitle candidates. Exclude `Forced` tracks when complete tracks exist, avoid CC/SDH unless requested, prefer higher event coverage/duration, and prefer the likely original/source-language track when metadata supports it.
 - Do not assume English; record detected source language and confidence.
 - Validate the detected source language with `src/subtitle_language.py`.
-- If the selected MKV has no embedded subtitle streams, stop before processing and say: "No se encontraron subtítulos incrustados en el archivo original para traducir a español."
+- If the selected MKV has no embedded subtitle streams, stop before processing and say: "No se encontraron subtítulos incrustados en el archivo original, por lo que este flujo no puede traducirlo a español. Cuando quieras crear subtítulos desde el audio del video, usa la skill `mkv-subtitle-agentic-transcription`, que estará orientada a transcribir las voces y generar subtítulos base para un flujo posterior de traducción."
 - Continue only for English, Mandarin Chinese, Hindi, Portuguese, French, Russian, German, Japanese, Wu Chinese/Shanghainese, Korean, or Italian.
 - Stop before extraction when the subtitle language is unsupported or the codec is not textual.
 
