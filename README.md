@@ -44,9 +44,10 @@ C:\Program Files\MKVToolNix
 - `src\subtitle_text_to_ass.py`: convierte subtitulos extraidos `.srt`, `.vtt` o `.webvtt` a un ASS simple para que puedan entrar a etapas que esperan ASS.
 - `src\subtitle_language.py` y `src\languages\`: validan que la pista fuente este en la lista de idiomas soportados.
 - `src\subtitle_workspace.py`: crea carpetas dedicadas por ejecucion para `subtitle_work/`, `translations/` y `output/`.
+- `src\translation_maps.py`: resuelve mapas JSON por workspace e idioma fuente.
 - `src\translation_terms.py`: aplica glosarios locales para normalizar nombres propios y terminos recurrentes.
 - `src\test_*.py`: pruebas unitarias.
-- `translations\`: mapas de traduccion locales. Esta carpeta esta ignorada por Git y no se sube al repositorio. El caso ingles conserva mapas `translations\translations_*.json`; las ejecuciones nuevas usan `translations\<workspace-id>\<idioma>\`.
+- `translations\`: mapas de traduccion locales. Esta carpeta esta ignorada por Git y no se sube al repositorio. Todos los idiomas, incluido ingles, usan `translations\<workspace-id>\<idioma>\`.
 - `.gitignore`: excluye videos, subtitulos extraidos, caches y temporales.
 
 El video fuente y el MKV final no se versionan. Por defecto, coloca entradas en `input/` y revisa resultados en `output/`.
@@ -122,7 +123,7 @@ El flujo solo permite traducir hacia espanol desde estos idiomas fuente:
 10. Coreano
 11. Italiano
 
-Si la metadata de la pista de subtitulos indica otro idioma, `src\traducir_subs_mkv.ps1` detiene la ejecucion y muestra la lista disponible. Para ingles se conserva el comportamiento actual con mapas locales en `translations\`. Para los otros idiomas soportados, la ruta recomendada es usar la skill con subagentes para generar mapas JSON locales en `translations\<workspace-id>\<idioma>\` y luego pasarlos al script con `-TranslationJson`.
+Si la metadata de la pista de subtitulos indica otro idioma, `src\traducir_subs_mkv.ps1` detiene la ejecucion y muestra la lista disponible. Para cualquier idioma soportado, incluido ingles, la ruta recomendada es usar la skill con subagentes para generar o validar mapas JSON locales en `translations\<workspace-id>\<idioma>\`. Si no pasas `-TranslationJson`, el script resuelve automaticamente esos mapas desde el workspace.
 
 ## Uso con Otros Nombres
 

@@ -71,9 +71,9 @@ Read only the references needed for the current task:
    - group adjacent subtitle events into semantic units;
    - reconstruct complete song lyric lines before translating.
 8. Translate grouped units into Spanish LatAm and preserve timing references.
-   - Keep the existing English-map workflow unchanged for English.
-   - For supported non-English sources, generate local maps under `translations/<workspace-id>/<source_lang>/` and pass them to `src/traducir_subs_mkv.ps1` with `-TranslationJson`.
-   - Never reuse English maps for non-English sources.
+   - Resolve or generate translation maps under `translations/<workspace-id>/<source_lang>/` for every supported source language, including English.
+   - Do not rely on legacy root-level English maps. If old English maps exist, migrate or copy them into `translations/<workspace-id>/en/` and validate checksums before using them.
+   - Never reuse maps from a different language or unrelated video.
    - Maintain a local glossary/term map for names, places, factions, ranks, and recurring terms. Apply it before final subtitle generation so ASS and SRT use consistent Spanish/transliterated names.
 9. For complex ASS song/effect segments, prefer a plain TV-safe subtitle line. If text cannot be reconstructed confidently, omit translation for those intervals.
 10. Generate outputs in `output/<workspace-id>/`:

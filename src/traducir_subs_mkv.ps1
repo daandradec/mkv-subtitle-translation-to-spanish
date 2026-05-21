@@ -12,13 +12,7 @@ param(
     [ValidateSet("ass", "srt", "both")]
     [string]$EmbeddedSubtitleFormat = "both",
     [string]$OutputMkv = "",
-    [string[]]$TranslationJson = @(
-        "translations\translations_dialogue_part1.json",
-        "translations\translations_dialogue_part2.json",
-        "translations\translations_signs.json",
-        "translations\translations_songs.json",
-        "translations\translations_songs_extra.json"
-    ),
+    [string[]]$TranslationJson = @(),
     [string[]]$TermMapJson = @()
 )
 
@@ -194,7 +188,21 @@ if ($SourceMkvTrackId -lt 0) {
 Write-Host "Detected source language: $($languageInfo.source_language_name) ($SourceLanguage)"
 Write-Host "Selected subtitle stream: 0:$SourceSubtitleStreamIndex (mkvmerge track $SourceMkvTrackId)"
 
-if ($SourceLanguage -ne "en" -and !$PSBoundParameters.ContainsKey("TranslationJson")) {
+if (!$PSBoundParameters.ContainsKey("TranslationJson")) {
+    $mapResolverArgs = @(
+        (Join-Path $ScriptDir "translation_maps.py"),
+        "--translations-dir", $TranslationsWorkDir,
+        "--language", $SourceLanguage,
+        "--json"
+    )
+    $resolvedMapsJson = & python $mapResolverArgs
+    if ($LASTEXITCODE -ne 0) {
+        throw "Translation map resolution failed."
+    }
+    $TranslationJson = @((($resolvedMapsJson | Out-String) | ConvertFrom-Json))
+}
+
+if ($TranslationJson.Count -eq 0) {
     $agenticTranslationDir = Join-Path $TranslationsWorkDir $SourceLanguage
     if (!(Test-Path -LiteralPath $agenticTranslationDir)) {
         New-Item -ItemType Directory -Path $agenticTranslationDir | Out-Null
@@ -203,9 +211,9 @@ if ($SourceLanguage -ne "en" -and !$PSBoundParameters.ContainsKey("TranslationJs
     @(
         "Source language '$SourceLanguage' is supported, but no translation maps were provided.",
         "Generate agentic translation JSON maps for this video in this folder, then rerun with -TranslationJson.",
-        "Do not use the default English maps for this source language."
+        "Maps are resolved per workspace and per language for every source language, including English."
     ) | Set-Content -Path $manifestPath -Encoding UTF8
-    throw "Supported non-English source language '$SourceLanguage' detected. Translation maps are required. Agentic workspace prepared at: $agenticTranslationDir"
+    throw "Supported source language '$SourceLanguage' detected, but translation maps are required. Agentic workspace prepared at: $agenticTranslationDir"
 }
 
 Write-Host "Extracting source subtitle stream 0:$SourceSubtitleStreamIndex..."

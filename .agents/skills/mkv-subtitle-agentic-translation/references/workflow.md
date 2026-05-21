@@ -65,8 +65,9 @@
 - Translate grouped text to Spanish LatAm.
 - Keep translations concise enough for subtitle reading speed.
 - Run linguistic review after merging dialogue and song translations.
-- Keep the existing English translation-map workflow unchanged.
-- For supported non-English languages, generate local translation maps under `translations/<workspace-id>/<source_lang>/`; do not reuse English maps.
+- Resolve or generate local translation maps under `translations/<workspace-id>/<source_lang>/` for every supported language, including English.
+- Do not rely on legacy root-level English maps. If old English maps exist, migrate or copy them into `translations/<workspace-id>/en/` and validate checksums before using them.
+- Do not reuse maps across different source languages or unrelated videos.
 - Maintain and apply a local term map/glossary for recurring names, places, factions, ranks, and culturally specific terms.
 
 ## 7. Generate Outputs
