@@ -62,6 +62,7 @@ C:\Program Files\MKVToolNix
 - `src\subtitle_language.py` y `src\languages\`: validan que la pista fuente este en la lista de idiomas soportados.
 - `src\subtitle_workspace.py`: crea carpetas dedicadas por ejecucion para `subtitle_work/`, `translations/` y `output/`.
 - `src\translation_maps.py`: resuelve mapas JSON por workspace e idioma fuente.
+- `src\normalize_translation_maps.py`: sanea mapas JSON antes de aplicarlos y detiene el flujo si quedan signos `?` sospechosos por texto corrupto.
 - `src\translation_terms.py`: aplica glosarios locales para normalizar nombres propios y terminos recurrentes.
 - `src\transcribe_video_audio.ps1`: transcribe audio de un video sin subtitulos y genera un MKV con subtitulos transcritos.
 - `src\transcription_backend.py`, `src\transcription_workspace.py`, `src\transcription_postprocess.py`: soporte para backend WhisperX/Whisper, workspaces y postproceso de transcripcion.
@@ -97,6 +98,8 @@ El prefijo se arma con palabras completas del nombre del MKV, hasta 24 caractere
 ## Flujo Opcional De Limpieza De Voz
 
 Usa este flujo cuando el audio de un video tenga ruido de fondo, voces poco claras o loudness irregular. Es independiente: no transcribe, no traduce y no llama automaticamente a otras skills. El resultado es un MKV nuevo que puedes usar despues con `video-subtitle-agentic-transcription` si quieres.
+
+Para grabaciones con ruido ambiental fuerte, primero conviene hacer una limpieza manual ligera en una herramienta especializada como Audacity, ElevenLabs o Adobe, evitando procesamientos agresivos que vuelvan la voz metalica o artificial. Despues usa `video-voice-cleaner` como una segunda pasada reproducible para normalizar loudness, aclarar la voz y preparar mejor el audio para Whisper/WhisperX.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\src\clean_video_voice.ps1 `
@@ -157,11 +160,12 @@ El script hace lo siguiente:
 3. Crea un workspace dedicado en `subtitle_work\<workspace-id>\`, `translations\<workspace-id>\` y `output\<workspace-id>\`.
 4. Extrae la pista de subtitulos seleccionada a `subtitle_work\<workspace-id>\*.source.ass`.
 5. Resuelve mapas de traduccion desde `translations\<workspace-id>\<idioma>\` si no pasas `-TranslationJson`.
-6. Genera `output\<workspace-id>\*.spa.ass`.
-7. Genera `output\<workspace-id>\*.spa.srt` cuando pasas `-TvSafeSrt`.
-8. Normaliza el espanol visible del ASS y regenera el SRT TV-safe desde ese ASS normalizado.
-9. Crea un MKV nuevo con `mkvmerge`, sin recodificar video/audio. Usa `-EmbeddedSubtitleFormat both` para incrustar ASS y SRT, `srt` para solo TV-safe, o `ass` para solo ASS estilizado.
-10. Conserva las pistas originales pero desactiva el default en todos los subtitulos originales. La pista `Español LatAm TV-safe` queda como `spa` y `default`; `Español LatAm` ASS queda incrustada como alternativa no-default.
+6. Sanea esos mapas en `subtitle_work\<workspace-id>\sanitized_translation_maps\` antes de aplicarlos y escribe `translation_map_quality_report.json`.
+7. Genera `output\<workspace-id>\*.spa.ass`.
+8. Genera `output\<workspace-id>\*.spa.srt` cuando pasas `-TvSafeSrt`.
+9. Normaliza el espanol visible del ASS, corrige texto corrupto, limpia duplicados/puentes y regenera el SRT TV-safe desde ese ASS normalizado.
+10. Crea un MKV nuevo con `mkvmerge`, sin recodificar video/audio. Usa `-EmbeddedSubtitleFormat both` para incrustar ASS y SRT, `srt` para solo TV-safe, o `ass` para solo ASS estilizado.
+11. Conserva las pistas originales pero desactiva el default en todos los subtitulos originales. La pista `Español LatAm TV-safe` queda como `spa` y `default`; `Español LatAm` ASS queda incrustada como alternativa no-default.
 
 Salida por defecto:
 
@@ -265,6 +269,9 @@ Reglas importantes:
 - Si no existe `translations_all.json`, el script usa los archivos `translations_*.json` dentro de la carpeta del idioma.
 - Los mapas antiguos de ingles pueden reutilizarse, pero deben copiarse o migrarse a `translations\<workspace-id>\en\`.
 - Si no existen mapas para el workspace e idioma detectado, el script crea la carpeta esperada y se detiene para que el flujo agéntico genere los JSON antes de reintentar.
+- Antes de aplicar cualquier mapa, `src\normalize_translation_maps.py` crea copias saneadas en `subtitle_work\<workspace-id>\sanitized_translation_maps\`.
+- El saneamiento corrige patrones comunes de texto corrupto como `?Es`, `a?n`, `est?`, `Ry?mon`, tildes perdidas y algunos errores recurrentes de acentuacion.
+- Si quedan signos `?` sospechosos despues del saneamiento, el flujo se detiene antes de generar el MKV para evitar subtitulos defectuosos.
 
 ## Uso con Otros Nombres
 
@@ -355,11 +362,22 @@ Este modulo preserva tiempos, limpia marcas comunes de SRT/VTT y genera eventos 
 
 ### 3. Aplicar Mapas de Traduccion
 
+Cuando uses scripts por piezas, sanea primero los mapas de traduccion:
+
+```powershell
+.\.venv\Scripts\python.exe .\src\normalize_translation_maps.py `
+  --translations .\translations\entrada-demo-A1B2C3\ja\translations_all.json `
+  --output-dir ".\subtitle_work\entrada-demo-A1B2C3\sanitized_translation_maps" `
+  --report ".\subtitle_work\entrada-demo-A1B2C3\translation_map_quality_report.json"
+```
+
+Luego aplica los mapas saneados:
+
 ```powershell
 .\.venv\Scripts\python.exe .\src\ass_apply_translations.py `
   --input-ass ".\subtitle_work\entrada-demo-A1B2C3\entrada.source.ass" `
   --output-ass ".\output\entrada-demo-A1B2C3\entrada.spa.ass" `
-  --translations .\translations\entrada-demo-A1B2C3\ja\translations_all.json `
+  --translations .\subtitle_work\entrada-demo-A1B2C3\sanitized_translation_maps\translations_all.json `
   --term-map .\translations\entrada-demo-A1B2C3\ja\term_map.json `
   --blank-translated-english-fx
 ```
@@ -429,10 +447,18 @@ Con la skill, el agente principal debe coordinar subagentes para:
 - traducir o aplicar mapas de traduccion disponibles;
 - aplicar glosarios locales para nombres, lugares, facciones y rangos;
 - revisar naturalidad en espanol latino;
+- sanear mapas JSON antes de aplicarlos y rechazar texto corrupto restante;
+- limpiar duplicados, puentes cortos y fragmentos repetidos en subtitulos generados;
 - generar ASS, SRT TV-safe y MKV portable;
 - validar pistas embebidas, default flags y ausencia de basura visual. Para comprobar ausencia de pistas `[Local]`, abrir o copiar solo el MKV, sin los `.ass`/`.srt` auxiliares del mismo `output\<workspace-id>`.
 
 La skill describe el flujo objetivo para soportar mas casos que el script PowerShell fijo. El script actual sigue siendo reproducible para el release ya traducido; la skill es la ruta adecuada cuando el archivo, idioma, formato de subtitulo o indice de pista no coinciden con ese caso.
+
+Skills locales disponibles:
+
+- `mkv-subtitle-agentic-translation`: traduce una pista textual embebida de MKV a espanol LatAm y genera ASS/SRT/MKV.
+- `video-subtitle-agentic-transcription`: transcribe audio local con WhisperX/Whisper y remuxea un MKV con subtitulos base.
+- `video-voice-cleaner`: limpia y normaliza voz/audio en un video antes de una transcripcion opcional.
 
 ## Formato de Traducciones
 
@@ -465,14 +491,19 @@ La normalizacion:
 - usa el texto visible del ASS como base principal;
 - conserva tiempos, estilos, capas y solapamientos;
 - evita tocar eventos tecnicos, dibujos, romaji, kanji y FX;
+- corrige patrones de mojibake o acentos danados que hayan sobrevivido al saneamiento de mapas;
+- redistribuye texto cuando un subtitulo repite todo el anterior y agrega contenido nuevo;
+- fusiona duplicados exactos extendiendo el tiempo del subtitulo anterior;
+- elimina subtitulos cortos tipo puente que son mitad del anterior y mitad del siguiente, extendiendo el anterior para evitar huecos visuales;
+- recorta fragmentos repetidos cuando el subtitulo anterior termina con el texto completo del actual;
 - regenera el SRT TV-safe con el mismo texto visible normalizado para eventos equivalentes;
-- escribe un reporte en `subtitle_work\<workspace-id>\spanish_normalization_report.json`.
+- escribe un reporte en `subtitle_work\<workspace-id>\spanish_normalization_report.json` con los cambios aplicados.
 
 Puedes correr las pruebas unitarias con:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\src\init_python_env.ps1
-.\.venv\Scripts\python.exe -m unittest .\src\test_spanish_normalization.py .\src\test_language_profiles.py .\src\test_subtitle_text_to_ass.py .\src\test_workspace_and_terms.py .\src\test_transcription_workflow.py
+.\.venv\Scripts\python.exe -m unittest discover -s .\src -p "test_*.py"
 ```
 
 ## Notas
