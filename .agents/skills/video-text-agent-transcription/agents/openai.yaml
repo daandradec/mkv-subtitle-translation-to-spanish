@@ -1,4 +1,4 @@
 interface:
   display_name: "Video Text Agent Transcription"
   short_description: "Create clean Markdown transcripts from videos"
-  default_prompt: "Use $video-text-agent-transcription to transcribe one video or a folder of videos with WhisperX or Whisper fallback and generate native transcript files plus clean RAG-ready Markdown."
+  default_prompt: "Use $video-text-agent-transcription to detect and confirm the spoken language, then transcribe one video or a folder with WhisperX or Whisper fallback and generate native transcript files plus clean RAG-ready Markdown."

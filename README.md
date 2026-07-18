@@ -240,6 +240,20 @@ powershell -ExecutionPolicy Bypass -File .\src\transcribe_video_text.ps1 `
   -BatchSize 8
 ```
 
+Para priorizar la precision de WhisperX sobre la velocidad y conservar literalmente sus palabras en las salidas textuales:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\src\transcribe_video_text.ps1 `
+  -InputPath ".\input\Auditoria 13 Mayo.mp4" `
+  -Language es `
+  -WhisperXQuality maximum `
+  -WhisperXInitialPrompt "Clase virtual en espanol colombiano sobre auditoria, gestion organizacional y sistemas de gestion." `
+  -WhisperXHotwords "DOFA, PESTEL, Classroom, auditoria, actividad economica, organizacion, partes interesadas, riesgos, oportunidades" `
+  -Verbatim
+```
+
+El perfil `maximum` usa `beam_size=10`, `patience=2.0`, temperatura cero y conserva los valores convencionales de penalizacion y VAD. `-WhisperXBeamSize` y `-WhisperXPatience` permiten sobrescribir el perfil para pruebas A/B. `-Verbatim` solo normaliza codificacion y espacios: no elimina muletillas, repeticiones, ruido ni aplica correcciones semanticas.
+
 Tambien puedes procesar todos los videos validos de `input/`:
 
 ```powershell
@@ -258,7 +272,7 @@ output\<workspace-id>\<stem>.md
 output\<workspace-id>\text_transcription_report.json
 ```
 
-El postproceso reescribe las salidas textuales canonicas (`.srt`, `.vtt`, `.txt` y `.md`) con texto limpio. Conserva el JSON y TSV como artefactos cercanos al backend. El Markdown usa un heading temporal por parrafo, calculado desde los mismos segmentos limpios del SRT, para que cada bloque de conocimiento tenga trazabilidad precisa al video. Tambien limpia ruido no verbal, relleno verbal excesivo, boilerplate de subtitulos, repeticiones, caracteres danados y algunas correcciones semanticas conservadoras del idioma detectado. Si WhisperX/Whisper reporta un idioma improbable frente al texto transcrito, el postproceso puede corregir el idioma efectivo para el Markdown, SRT/VTT/TXT y el reporte; si necesitas control total, fuerza el idioma con `-Language`.
+El postproceso reescribe las salidas textuales canonicas (`.srt`, `.vtt`, `.txt` y `.md`) con texto limpio, o literal cuando se usa `-Verbatim`. Conserva el JSON y TSV como artefactos cercanos al backend. El Markdown usa un heading temporal por parrafo, calculado desde los mismos segmentos del SRT, para que cada bloque de conocimiento tenga trazabilidad precisa al video. En modo limpio elimina ruido no verbal, relleno verbal excesivo, boilerplate de subtitulos, repeticiones, caracteres danados y aplica algunas correcciones semanticas conservadoras. Si WhisperX/Whisper reporta un idioma improbable frente al texto transcrito, el postproceso puede corregir el idioma efectivo para el Markdown, SRT/VTT/TXT y el reporte; si necesitas control total, fuerza el idioma con `-Language`. El reporte incluye el perfil, parametros, comando y versiones del backend para reproducir comparaciones.
 
 Invocacion desde Codex:
 

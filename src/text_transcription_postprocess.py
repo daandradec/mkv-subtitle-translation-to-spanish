@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import base64
 import json
 import re
 import shutil
@@ -100,16 +101,26 @@ class Segment:
     text: str
 
 
+def decode_json_argument(value, default):
+    if not value:
+        return default
+    try:
+        return json.loads(value)
+    except json.JSONDecodeError:
+        decoded = base64.b64decode(value, validate=True).decode("utf-8")
+        return json.loads(decoded)
+
+
 def normalize_space(text):
     return re.sub(r"\s+", " ", (text or "").strip())
 
 
-def normalize_encoding_artifacts(text, language=""):
+def normalize_encoding_artifacts(text, language="", repair_language_punctuation=True):
     text = text.replace("\ufeff", "").replace("\u200b", "")
     text = text.replace("\ufffd", "")
     for bad, good in MOJIBAKE_REPLACEMENTS.items():
         text = text.replace(bad, good)
-    if (language or "").lower().startswith("es"):
+    if repair_language_punctuation and (language or "").lower().startswith("es"):
         for bad, good in SPANISH_REPLACEMENTS.items():
             text = text.replace(bad, good)
         text = re.sub(
@@ -183,8 +194,14 @@ def is_filler_only(text, language=""):
     return value in fillers
 
 
-def clean_segment_text(text, language=""):
-    text = normalize_encoding_artifacts(text, language=language)
+def clean_segment_text(text, language="", verbatim=False):
+    text = normalize_encoding_artifacts(
+        text,
+        language=language,
+        repair_language_punctuation=not verbatim,
+    )
+    if verbatim:
+        return normalize_space(text)
     text = normalize_semantics(text, language=language)
     text = normalize_space(text)
     if is_noise_or_boilerplate(text) or is_filler_only(text, language=language):
@@ -338,17 +355,17 @@ def write_clean_text_outputs(cleaned_segments, output_dir, video_stem):
     return {key: str(path) for key, path in outputs.items()}
 
 
-def clean_segments(segments, language=""):
+def clean_segments(segments, language="", verbatim=False):
     cleaned = []
     previous_norm = ""
     removed = 0
     for segment in segments:
-        text = clean_segment_text(segment.text, language=language)
+        text = clean_segment_text(segment.text, language=language, verbatim=verbatim)
         norm = re.sub(r"\W+", "", text).casefold()
         if not text:
             removed += 1
             continue
-        if norm and norm == previous_norm:
+        if not verbatim and norm and norm == previous_norm:
             removed += 1
             continue
         cleaned.append(Segment(start=segment.start, end=segment.end, text=text))
@@ -415,8 +432,8 @@ def build_markdown_sections(segments, section_seconds=180, paragraph_max_chars=9
     return sections
 
 
-def normalize_for_alignment(text, language=""):
-    text = clean_segment_text(text, language=language)
+def normalize_for_alignment(text, language="", verbatim=False):
+    text = clean_segment_text(text, language=language, verbatim=verbatim)
     text = text.casefold()
     return re.sub(r"[^0-9a-z\u00e1\u00e9\u00ed\u00f3\u00fa\u00fc\u00f1]+", "", text)
 
@@ -451,14 +468,17 @@ def build_markdown_paragraphs(segments, paragraph_max_chars=900):
     return [paragraph for paragraph in paragraphs if paragraph["text"]]
 
 
-def align_paragraphs_to_segments(paragraphs, segments, language=""):
+def align_paragraphs_to_segments(paragraphs, segments, language="", verbatim=False):
     aligned = []
     warnings = []
     pointer = 0
-    segment_norms = [normalize_for_alignment(segment.text, language=language) for segment in segments]
+    segment_norms = [
+        normalize_for_alignment(segment.text, language=language, verbatim=verbatim)
+        for segment in segments
+    ]
 
     for index, paragraph in enumerate(paragraphs, start=1):
-        target = normalize_for_alignment(paragraph["text"], language=language)
+        target = normalize_for_alignment(paragraph["text"], language=language, verbatim=verbatim)
         if not target:
             continue
 
@@ -534,6 +554,7 @@ def write_markdown(
     language,
     audio_stream_index,
     paragraphs,
+    postprocess_mode="clean",
 ):
     def yaml_quote(value):
         escaped = str(value).replace("'", "''")
@@ -546,6 +567,7 @@ def write_markdown(
         f"backend: {yaml_quote(backend)}",
         f"language: {yaml_quote(language or 'und')}",
         f"audio_stream_index: {audio_stream_index}",
+        f"postprocess_mode: {yaml_quote(postprocess_mode)}",
         f"generated_at: {yaml_quote(datetime.now(timezone.utc).isoformat())}",
         "---",
         "",
@@ -573,6 +595,10 @@ def postprocess_text_transcription(
     audio_stream_index=-1,
     section_seconds=180,
     paragraph_max_chars=900,
+    verbatim=False,
+    backend_settings=None,
+    backend_versions=None,
+    backend_command=None,
 ):
     output_dir = Path(output_dir)
     copied = canonicalize_native_outputs(output_dir, audio_stem, video_stem)
@@ -582,13 +608,18 @@ def postprocess_text_transcription(
         raise RuntimeError("La transcripcion no produjo texto util para generar Markdown.")
     detected_language = infer_language_from_text(segments, detected_language)
 
-    cleaned, removed_count = clean_segments(segments, language=detected_language)
+    cleaned, removed_count = clean_segments(segments, language=detected_language, verbatim=verbatim)
     if not cleaned:
         raise RuntimeError("El postproceso elimino todos los segmentos por ruido/relleno; revisa el audio o los parametros.")
 
     cleaned_text_outputs = write_clean_text_outputs(cleaned, output_dir, video_stem)
     initial_paragraphs = build_markdown_paragraphs(cleaned, paragraph_max_chars=paragraph_max_chars)
-    aligned_paragraphs, alignment_warnings = align_paragraphs_to_segments(initial_paragraphs, cleaned, language=detected_language)
+    aligned_paragraphs, alignment_warnings = align_paragraphs_to_segments(
+        initial_paragraphs,
+        cleaned,
+        language=detected_language,
+        verbatim=verbatim,
+    )
     validation_warnings = validate_markdown_paragraphs(aligned_paragraphs)
     write_markdown(
         markdown_path=markdown_path,
@@ -598,12 +629,17 @@ def postprocess_text_transcription(
         language=detected_language,
         audio_stream_index=audio_stream_index,
         paragraphs=aligned_paragraphs,
+        postprocess_mode="verbatim" if verbatim else "clean",
     )
     report = {
         "source_video": source_video,
         "backend": backend,
         "detected_language": detected_language or "und",
         "audio_stream_index": audio_stream_index,
+        "postprocess_mode": "verbatim" if verbatim else "clean",
+        "backend_settings": backend_settings or {},
+        "backend_versions": backend_versions or {},
+        "backend_command": backend_command or [],
         "input_segment_count": len(segments),
         "clean_segment_count": len(cleaned),
         "removed_segment_count": removed_count,
@@ -632,6 +668,10 @@ def main():
     parser.add_argument("--audio-stream-index", type=int, default=-1)
     parser.add_argument("--section-seconds", type=int, default=180)
     parser.add_argument("--paragraph-max-chars", type=int, default=900)
+    parser.add_argument("--verbatim", action="store_true")
+    parser.add_argument("--backend-settings-json", default="{}")
+    parser.add_argument("--backend-versions-json", default="{}")
+    parser.add_argument("--backend-command-json", default="[]")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
 
@@ -647,6 +687,10 @@ def main():
         audio_stream_index=args.audio_stream_index,
         section_seconds=args.section_seconds,
         paragraph_max_chars=args.paragraph_max_chars,
+        verbatim=args.verbatim,
+        backend_settings=decode_json_argument(args.backend_settings_json, {}),
+        backend_versions=decode_json_argument(args.backend_versions_json, {}),
+        backend_command=decode_json_argument(args.backend_command_json, []),
     )
     if args.json:
         print(json.dumps(report, ensure_ascii=False, indent=2))

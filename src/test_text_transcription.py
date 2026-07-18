@@ -48,6 +48,17 @@ class TextTranscriptionTests(unittest.TestCase):
             "pues a m\u00ed no me dan porque yo ped\u00ed permiso en el trabajo",
         )
 
+    def test_verbatim_cleanup_preserves_recognized_words_and_repetitions(self):
+        self.assertEqual(
+            clean_segment_text("pues pues yo perd\u00ed permiso", "es", verbatim=True),
+            "pues pues yo perd\u00ed permiso",
+        )
+        self.assertEqual(
+            clean_segment_text("Subtitulos realizados por la comunidad", "es", verbatim=True),
+            "Subtitulos realizados por la comunidad",
+        )
+        self.assertEqual(clean_segment_text("?Es esto una prueba?", "es", verbatim=True), "?Es esto una prueba?")
+
     def test_postprocess_generates_markdown_from_whisper_json(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -116,6 +127,38 @@ class TextTranscriptionTests(unittest.TestCase):
                 backend="whisperx",
             )
             self.assertEqual(report["detected_language"], "es")
+
+    def test_postprocess_verbatim_preserves_duplicate_segments_and_records_backend(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            output_dir = Path(tmp)
+            payload = {
+                "language": "es",
+                "segments": [
+                    {"start": 0.0, "end": 1.0, "text": "Hola hola."},
+                    {"start": 1.1, "end": 2.0, "text": "Hola hola."},
+                ],
+            }
+            (output_dir / "audio.json").write_text(json.dumps(payload), encoding="utf-8")
+            report = postprocess_text_transcription(
+                output_dir=output_dir,
+                audio_stem="audio",
+                video_stem="video",
+                markdown_path=output_dir / "video.md",
+                report_path=output_dir / "text_transcription_report.json",
+                source_video="input/video.mp4",
+                backend="whisperx",
+                verbatim=True,
+                backend_settings={"quality_profile": "maximum", "beam_size": 10},
+                backend_versions={"whisperx": "3.8.5"},
+                backend_command=["whisperx", "audio.wav"],
+            )
+            markdown = (output_dir / "video.md").read_text(encoding="utf-8")
+            self.assertEqual(report["postprocess_mode"], "verbatim")
+            self.assertEqual(report["clean_segment_count"], 2)
+            self.assertEqual(report["removed_segment_count"], 0)
+            self.assertEqual(report["backend_settings"]["beam_size"], 10)
+            self.assertIn("postprocess_mode: 'verbatim'", markdown)
+            self.assertIn("Hola hola. Hola hola.", markdown)
 
     def test_markdown_validation_detects_mojibake_and_time_regression(self):
         warnings = validate_markdown_paragraphs(

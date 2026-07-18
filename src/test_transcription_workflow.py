@@ -6,7 +6,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from transcription_backend import build_backend_command, choose_backend
+from transcription_backend import build_backend_command, choose_backend, resolve_whisperx_decoding_options
 from transcription_postprocess import language_metadata, postprocess_transcription
 from transcription_workspace import build_transcription_workspace
 
@@ -56,6 +56,27 @@ class TranscriptionWorkflowTests(unittest.TestCase):
         self.assertIn("transcribe", command)
         self.assertIn("--language", command)
         self.assertIn("Spanish", command)
+
+    def test_build_whisperx_maximum_quality_command(self):
+        command = build_backend_command(
+            backend="whisperx",
+            audio="audio.wav",
+            output_dir="out",
+            language="es",
+            whisperx_quality="maximum",
+            whisperx_initial_prompt="Clase virtual de auditoria.",
+            whisperx_hotwords="DOFA, PESTEL",
+        )
+        self.assertEqual(command[command.index("--beam_size") + 1], "10")
+        self.assertEqual(command[command.index("--patience") + 1], "2.0")
+        self.assertEqual(command[command.index("--temperature") + 1], "0")
+        self.assertEqual(command[command.index("--language") + 1], "es")
+        self.assertIn("Clase virtual de auditoria.", command)
+        self.assertIn("DOFA, PESTEL", command)
+
+    def test_whisperx_quality_options_allow_explicit_overrides(self):
+        options = resolve_whisperx_decoding_options("maximum", beam_size=8, patience=1.5)
+        self.assertEqual(options, {"beam_size": 8, "patience": 1.5})
 
     def test_postprocess_generates_clean_srt_ass_and_report(self):
         with tempfile.TemporaryDirectory() as tmp:

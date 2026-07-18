@@ -18,3 +18,5 @@ Cleanup priorities:
 - If backend metadata says English but the text strongly matches Spanish markers, report the Markdown language as Spanish.
 - Keep semantic corrections conservative. Prefer punctuation and obvious transcription fixes over deleting spoken content.
 - Avoid aggressive summarization. This is a cleaned transcript, not a summary.
+
+When `-Verbatim` is selected, skip semantic corrections, boilerplate/noise/filler removal, repeated-word removal, and duplicate-segment removal. Only repair encoding artifacts and normalize whitespace. Record `postprocess_mode: verbatim` in Markdown and the report.

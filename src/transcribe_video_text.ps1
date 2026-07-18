@@ -10,9 +10,22 @@ param(
     [string]$Device = "cuda",
     [string]$ComputeType = "float16",
     [int]$BatchSize = 8,
+    [ValidateSet("balanced", "maximum")]
+    [string]$WhisperXQuality = "balanced",
+    [int]$WhisperXBeamSize = 0,
+    [double]$WhisperXPatience = 0,
+    [double]$WhisperXLengthPenalty = 1.0,
+    [string]$WhisperXInitialPrompt = "",
+    [string]$WhisperXHotwords = "",
+    [ValidateSet("pyannote", "silero")]
+    [string]$WhisperXVadMethod = "pyannote",
+    [double]$WhisperXVadOnset = 0.5,
+    [double]$WhisperXVadOffset = 0.363,
+    [int]$WhisperXChunkSize = 30,
     [int]$SectionSeconds = 180,
     [int]$ParagraphMaxChars = 900,
     [bool]$Fp16 = $true,
+    [switch]$Verbatim,
     [switch]$Force,
     [switch]$DryRun
 )
@@ -210,6 +223,12 @@ function Invoke-TextTranscriptionForVideo {
         "--device", $Device,
         "--compute-type", $ComputeType,
         "--batch-size", $BatchSize,
+        "--whisperx-quality", $WhisperXQuality,
+        "--whisperx-length-penalty", $WhisperXLengthPenalty.ToString([System.Globalization.CultureInfo]::InvariantCulture),
+        "--whisperx-vad-method", $WhisperXVadMethod,
+        "--whisperx-vad-onset", $WhisperXVadOnset.ToString([System.Globalization.CultureInfo]::InvariantCulture),
+        "--whisperx-vad-offset", $WhisperXVadOffset.ToString([System.Globalization.CultureInfo]::InvariantCulture),
+        "--whisperx-chunk-size", $WhisperXChunkSize,
         "--json"
     )
     if ($Language) {
@@ -217,6 +236,18 @@ function Invoke-TextTranscriptionForVideo {
     }
     if (!$Fp16) {
         $backendArgs += "--no-fp16"
+    }
+    if ($WhisperXBeamSize -gt 0) {
+        $backendArgs += @("--whisperx-beam-size", $WhisperXBeamSize)
+    }
+    if ($WhisperXPatience -gt 0) {
+        $backendArgs += @("--whisperx-patience", $WhisperXPatience.ToString([System.Globalization.CultureInfo]::InvariantCulture))
+    }
+    if ($WhisperXInitialPrompt) {
+        $backendArgs += @("--whisperx-initial-prompt", $WhisperXInitialPrompt)
+    }
+    if ($WhisperXHotwords) {
+        $backendArgs += @("--whisperx-hotwords", $WhisperXHotwords)
     }
     $backendJson = & $PythonExe @backendArgs
     if ($LASTEXITCODE -ne 0) {
@@ -286,6 +317,20 @@ function Invoke-TextTranscriptionForVideo {
     )
     if ($Language) {
         $postprocessArgs += @("--requested-language", $Language)
+    }
+    $backendSettingsJson = $backendInfo.settings | ConvertTo-Json -Compress -Depth 8
+    $backendVersionsJson = $backendInfo.versions | ConvertTo-Json -Compress -Depth 4
+    $backendCommandJson = @($backendInfo.command) | ConvertTo-Json -Compress
+    $backendSettingsBase64 = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($backendSettingsJson))
+    $backendVersionsBase64 = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($backendVersionsJson))
+    $backendCommandBase64 = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($backendCommandJson))
+    $postprocessArgs += @(
+        "--backend-settings-json", $backendSettingsBase64,
+        "--backend-versions-json", $backendVersionsBase64,
+        "--backend-command-json", $backendCommandBase64
+    )
+    if ($Verbatim) {
+        $postprocessArgs += "--verbatim"
     }
     $reportJson = & $PythonExe @postprocessArgs
     if ($LASTEXITCODE -ne 0) {
