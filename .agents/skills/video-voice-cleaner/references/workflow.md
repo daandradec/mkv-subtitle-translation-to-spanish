@@ -3,11 +3,14 @@
 ## 1. Prepare Input
 
 - Use `input/` as the canonical folder.
-- Process only one video per run.
+- Process a single video when a file is provided.
+- Process all valid videos non-recursively when a folder path is provided.
+- Without explicit input, keep strict autodetection: process only when `input/` contains exactly one valid video.
 - Accept any video file with audio that FFmpeg can decode.
 - Create shared workspace directories:
   - `subtitle_work/<workspace-id>/voice-cleaner/`
   - `output/<workspace-id>/`
+- In batch mode, create one independent workspace per video and continue with remaining videos if one fails.
 
 ## 2. Inspect Audio
 

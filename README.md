@@ -109,6 +109,16 @@ powershell -ExecutionPolicy Bypass -File .\src\clean_video_voice.ps1 `
   -OutputFormat mkv
 ```
 
+Tambien puedes pasar una carpeta para limpiar todos los videos validos de forma no recursiva:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\src\clean_video_voice.ps1 `
+  -InputVideo ".\input" `
+  -Profile conservative
+```
+
+En modo carpeta, cada video recibe su propio `output\<workspace-id>\` y `subtitle_work\<workspace-id>\`. Si un archivo falla, el flujo continua con los demas y reporta el resumen al final. Si no pasas `-InputVideo`, el script conserva autodeteccion estricta y solo procesa cuando `input/` tiene exactamente un video valido.
+
 Perfiles:
 
 - `conservative`: default; prioriza voz natural y bajo riesgo de artefactos.
@@ -214,6 +224,48 @@ subtitle_work\<workspace-id>\transcription_report.json
 
 El MKV transcrito incluye una pista SRT default con titulo `Transcripción <idioma>`. Si `mkvmerge` no puede leer el contenedor fuente directamente, el script crea primero un MKV intermedio en `subtitle_work\<workspace-id>\` con `ffmpeg -map 0 -c copy`. Si el idioma detectado no esta soportado por la skill de traduccion, el flujo avisa que la transcripcion es valida pero la traduccion posterior puede detenerse.
 Cuando el idioma si esta soportado, `mkv-subtitle-agentic-translation` puede usar esa pista SRT transcrita como fuente y convertirla automaticamente a ASS para su pipeline interno.
+
+## Flujo De Transcripcion A Texto
+
+Usa `video-text-agent-transcription` cuando necesitas una transcripcion textual limpia para lectura, analisis o una futura base de conocimiento/RAG. Este flujo no crea MKV, no incrusta subtitulos y no traduce; solo genera los archivos nativos de WhisperX/Whisper y un Markdown optimizado.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\src\transcribe_video_text.ps1 `
+  -InputPath ".\input\video.mp4" `
+  -Backend auto `
+  -WhisperXModel large-v3 `
+  -WhisperModel turbo `
+  -Device cuda `
+  -ComputeType float16 `
+  -BatchSize 8
+```
+
+Tambien puedes procesar todos los videos validos de `input/`:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\src\transcribe_video_text.ps1 -InputPath ".\input"
+```
+
+El script inicializa `.venv`, selecciona la pista de audio default o la indicada con `-AudioStreamIndex`, extrae WAV mono 16 kHz, ejecuta WhisperX o Whisper fallback y genera una carpeta unica por video:
+
+```text
+output\<workspace-id>\<stem>.json
+output\<workspace-id>\<stem>.srt
+output\<workspace-id>\<stem>.vtt
+output\<workspace-id>\<stem>.txt
+output\<workspace-id>\<stem>.tsv
+output\<workspace-id>\<stem>.md
+output\<workspace-id>\text_transcription_report.json
+```
+
+El postproceso reescribe las salidas textuales canonicas (`.srt`, `.vtt`, `.txt` y `.md`) con texto limpio. Conserva el JSON y TSV como artefactos cercanos al backend. El Markdown usa un heading temporal por parrafo, calculado desde los mismos segmentos limpios del SRT, para que cada bloque de conocimiento tenga trazabilidad precisa al video. Tambien limpia ruido no verbal, relleno verbal excesivo, boilerplate de subtitulos, repeticiones, caracteres danados y algunas correcciones semanticas conservadoras del idioma detectado. Si WhisperX/Whisper reporta un idioma improbable frente al texto transcrito, el postproceso puede corregir el idioma efectivo para el Markdown, SRT/VTT/TXT y el reporte; si necesitas control total, fuerza el idioma con `-Language`.
+
+Invocacion desde Codex:
+
+```text
+[$video-text-agent-transcription](C:\Development\Proyectos\Video\.agents\skills\video-text-agent-transcription\SKILL.md) "input\video.mp4"
+[$video-text-agent-transcription](C:\Development\Proyectos\Video\.agents\skills\video-text-agent-transcription\SKILL.md) "input"
+```
 
 La skill local vive en:
 

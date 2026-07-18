@@ -76,11 +76,13 @@ function Resolve-ProjectPath {
 }
 
 function Get-InputVideoCandidates {
-    if (!(Test-Path -LiteralPath $InputDir)) {
+    param([string]$DirectoryPath = $InputDir)
+
+    if (!(Test-Path -LiteralPath $DirectoryPath)) {
         return @()
     }
     $candidates = @()
-    foreach ($file in (Get-ChildItem -LiteralPath $InputDir -File)) {
+    foreach ($file in (Get-ChildItem -LiteralPath $DirectoryPath -File | Sort-Object Name)) {
         $probeJson = & ffprobe -v error `
             -show_entries stream=index,codec_type `
             -of json `
@@ -97,6 +99,88 @@ function Get-InputVideoCandidates {
         }
     }
     return @($candidates)
+}
+
+function Resolve-InputPath {
+    param([string]$InputPath)
+    if ([string]::IsNullOrWhiteSpace($InputPath)) {
+        return ""
+    }
+    $candidatePaths = @()
+    if ([System.IO.Path]::IsPathRooted($InputPath)) {
+        $candidatePaths += $InputPath
+    } else {
+        $candidatePaths += (Join-Path $InputDir $InputPath)
+        $candidatePaths += (Join-Path $ProjectRoot $InputPath)
+    }
+    foreach ($candidatePath in ($candidatePaths | Select-Object -Unique)) {
+        if (Test-Path -LiteralPath $candidatePath) {
+            return (Resolve-Path -LiteralPath $candidatePath).Path
+        }
+    }
+    throw "No se encontro la entrada indicada: $InputPath. Debe ser un archivo de video o una carpeta valida."
+}
+
+function Invoke-BatchVoiceCleaner {
+    param([string]$DirectoryPath)
+
+    if ($WorkspaceId) {
+        throw "-WorkspaceId solo se puede usar cuando se procesa un unico video. Para batch, deja que el flujo cree un workspace por video."
+    }
+    $videos = @(Get-InputVideoCandidates -DirectoryPath $DirectoryPath)
+    if ($videos.Count -eq 0) {
+        throw "La carpeta indicada no contiene videos con audio procesables: $DirectoryPath"
+    }
+
+    $results = New-Object System.Collections.ArrayList
+    $failures = New-Object System.Collections.ArrayList
+    foreach ($video in $videos) {
+        $childArgs = @(
+            "-NoProfile",
+            "-ExecutionPolicy", "Bypass",
+            "-File", $PSCommandPath,
+            "-InputVideo", $video.FullName,
+            "-AudioStreamIndex", ([string]$AudioStreamIndex),
+            "-Profile", $Profile,
+            "-OutputFormat", $OutputFormat
+        )
+        if ($KeepTemp) {
+            $childArgs += "-KeepTemp"
+        }
+        if ($GenerateSamples) {
+            $childArgs += "-GenerateSamples"
+        }
+        if ($DryRun) {
+            $childArgs += "-DryRun"
+        }
+
+        Write-Host "Batch item: $($video.FullName)"
+        & powershell @childArgs
+        if ($LASTEXITCODE -eq 0) {
+            [void]$results.Add([pscustomobject][ordered]@{
+                input = $video.FullName
+                status = "ok"
+            })
+        } else {
+            [void]$failures.Add([pscustomobject][ordered]@{
+                input = $video.FullName
+                status = "failed"
+                exit_code = $LASTEXITCODE
+            })
+            Write-Warning "Fallo la limpieza de voz de '$($video.FullName)' con exit code $LASTEXITCODE. Se continuara con el siguiente video."
+        }
+    }
+
+    Write-Host "Batch done."
+    Write-Host "Processed: $($results.Count); Failed: $($failures.Count)"
+    if ($failures.Count -gt 0) {
+        [ordered]@{
+            processed = $results
+            failed = $failures
+        } | ConvertTo-Json -Depth 5 | Write-Host
+        exit 1
+    }
+    exit 0
 }
 
 function Resolve-InputVideoPath {
@@ -190,6 +274,13 @@ foreach ($commandName in @("ffmpeg", "ffprobe", "mkvmerge")) {
 }
 if (!(Test-Path -LiteralPath $ModelPath)) {
     throw "No se encontro el modelo RNNoise requerido: $ModelPath"
+}
+
+if ($inputVideoWasProvided -and ![string]::IsNullOrWhiteSpace($InputVideo)) {
+    $resolvedInputPath = Resolve-InputPath -InputPath $InputVideo
+    if ((Get-Item -LiteralPath $resolvedInputPath).PSIsContainer) {
+        Invoke-BatchVoiceCleaner -DirectoryPath $resolvedInputPath
+    }
 }
 
 $InputVideo = Resolve-InputVideoPath -InputPath $InputVideo -WasProvided $inputVideoWasProvided

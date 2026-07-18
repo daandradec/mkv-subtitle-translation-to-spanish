@@ -35,14 +35,14 @@ Use subagents in small batches and close them after integrating results.
 
 ## Workflow
 
-1. Validate the input video and process only one video per run.
-2. Select audio with optional `-AudioStreamIndex`; otherwise use default audio, then first audio.
+1. Validate input as either one video file or one folder. Folder input processes valid videos non-recursively in name order.
+2. Select audio with optional `-AudioStreamIndex`; otherwise use default audio, then first audio. The same selection rule applies to every file in batch mode.
 3. Use `conservative` by default unless the user asks for stronger cleanup.
 4. Validate `models/voice-cleaner/std.rnnn`.
 5. Run `src/clean_video_voice.ps1`.
 6. Preserve original audio and mark clean FLAC as default in the output MKV.
 7. Keep generated diagnostics in `subtitle_work/<workspace-id>/voice-cleaner/`.
-8. Report the output MKV and clean FLAC paths.
+8. Report the output MKV and clean FLAC paths. In batch mode, continue after per-file failures and summarize processed/failed items.
 
 ## Guardrails
 

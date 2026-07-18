@@ -29,6 +29,8 @@ prd/
 !PRD-spanish-normalization.md
 !PRD-transcription.md
 !PRD-voice-cleaner.md
+!PRD-skill-text-transcription.md
+!PRD-transcriptionv0.0.2.md
 
 # Local tools and downloaded installers/packages
 tools/
