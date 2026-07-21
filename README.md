@@ -66,20 +66,20 @@ Las carpetas raíz históricas `subtitle_work/`, `translations/` y `tools/` ya n
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File `
-  .\src\mkv-subtitle-agentic-translation\traducir_subs_mkv.ps1 `
+  .\src\video-generate-traslated-subtitles-from-existing-subtitles\traducir_subs_mkv.ps1 `
   -InputMkv ".\input\video.mkv"
 ```
 
 El flujo selecciona una pista textual compatible, la convierte a ASS cuando hace falta y busca mapas en:
 
 ```text
-output/<stem>/debug/mkv-subtitle-agentic-translation/translations/<idioma>/
+output/<stem>/debug/video-generate-traslated-subtitles-from-existing-subtitles/translations/<idioma>/
 ```
 
 Si faltan mapas, conserva la extracción, escribe:
 
 ```text
-output/<stem>/debug/mkv-subtitle-agentic-translation/checkpoints/translation_checkpoint.json
+output/<stem>/debug/video-generate-traslated-subtitles-from-existing-subtitles/checkpoints/translation_checkpoint.json
 ```
 
 y termina con `[CHECKPOINT:AWAITING_TRANSLATION_MAPS]`. Después de crear `translations_all.json` o archivos `translations_*.json` en la ruta indicada, debe ejecutarse el comando guardado en el checkpoint. Ese comando incluye `-Resume` y las pistas exactas; no se debe iniciar una ejecución nueva porque limpiaría el checkpoint.
@@ -88,11 +88,11 @@ Salida típica:
 
 ```text
 output/<stem>/<stem>.spa.mkv
-output/<stem>/debug/mkv-subtitle-agentic-translation/subtitles/source/<stem>.source.ass
-output/<stem>/debug/mkv-subtitle-agentic-translation/subtitles/generated/<stem>.spa.ass
-output/<stem>/debug/mkv-subtitle-agentic-translation/subtitles/generated/<stem>.spa.srt
-output/<stem>/debug/mkv-subtitle-agentic-translation/translations/<idioma>/...
-output/<stem>/debug/mkv-subtitle-agentic-translation/reports/...
+output/<stem>/debug/video-generate-traslated-subtitles-from-existing-subtitles/subtitles/source/<stem>.source.ass
+output/<stem>/debug/video-generate-traslated-subtitles-from-existing-subtitles/subtitles/generated/<stem>.spa.ass
+output/<stem>/debug/video-generate-traslated-subtitles-from-existing-subtitles/subtitles/generated/<stem>.spa.srt
+output/<stem>/debug/video-generate-traslated-subtitles-from-existing-subtitles/translations/<idioma>/...
+output/<stem>/debug/video-generate-traslated-subtitles-from-existing-subtitles/reports/...
 ```
 
 La raíz contiene únicamente el MKV final y la carpeta `debug`; este flujo no publica ASS/SRT externos. Las pistas originales se conservan como no predeterminadas. Cuando se generan ambas variantes, la pista `Español LatAm` ASS queda primera y predeterminada, seguida por la alternativa `Español LatAm TV-safe` SRT como no predeterminada. El launcher comprueba este contrato después del remux y escribe `reports/remux_validation_report.json`.
@@ -101,7 +101,7 @@ La raíz contiene únicamente el MKV final y la carpeta `debug`; este flujo no p
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File `
-  .\src\video-subtitle-agentic-transcription\transcribe_video_audio.ps1 `
+  .\src\video-generate-new-subtitles-from-audio\transcribe_video_audio.ps1 `
   -InputVideo ".\input\video.mp4"
 ```
 
@@ -119,7 +119,7 @@ Para exportar también un ASS sincronizado con la pista ya incrustada:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File `
-  .\src\video-subtitle-agentic-transcription\transcribe_video_audio.ps1 `
+  .\src\video-generate-new-subtitles-from-audio\transcribe_video_audio.ps1 `
   -InputVideo ".\input\video.mp4" `
   --export-ass-file-subtitles
 ```
@@ -133,17 +133,17 @@ output/<stem>/sidecars/<stem>.transcribed.ass
 Los archivos internos quedan en:
 
 ```text
-output/<stem>/debug/video-subtitle-agentic-transcription/audio/
-output/<stem>/debug/video-subtitle-agentic-transcription/whisper/
-output/<stem>/debug/video-subtitle-agentic-transcription/postprocess/
-output/<stem>/debug/video-subtitle-agentic-transcription/reports/
+output/<stem>/debug/video-generate-new-subtitles-from-audio/audio/
+output/<stem>/debug/video-generate-new-subtitles-from-audio/whisper/
+output/<stem>/debug/video-generate-new-subtitles-from-audio/postprocess/
+output/<stem>/debug/video-generate-new-subtitles-from-audio/reports/
 ```
 
 ## Transcribir a texto
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File `
-  .\src\video-text-agent-transcription\transcribe_video_text.ps1 `
+  .\src\video-generate-whisper-transcription\transcribe_video_text.ps1 `
   -InputPath ".\input\video.mp4" `
   -Language es
 ```
@@ -155,14 +155,14 @@ Salida:
 ```text
 output/<stem>/<stem>.srt
 output/<stem>/<stem>.md
-output/<stem>/debug/video-text-agent-transcription/whisper/raw/<stem>.json
-output/<stem>/debug/video-text-agent-transcription/whisper/raw/<stem>.srt
-output/<stem>/debug/video-text-agent-transcription/whisper/raw/<stem>.vtt
-output/<stem>/debug/video-text-agent-transcription/whisper/raw/<stem>.txt
-output/<stem>/debug/video-text-agent-transcription/whisper/raw/<stem>.tsv
-output/<stem>/debug/video-text-agent-transcription/whisper/postprocess/<stem>.vtt
-output/<stem>/debug/video-text-agent-transcription/whisper/postprocess/<stem>.txt
-output/<stem>/debug/video-text-agent-transcription/reports/text_transcription_report.json
+output/<stem>/debug/video-generate-whisper-transcription/whisper/raw/<stem>.json
+output/<stem>/debug/video-generate-whisper-transcription/whisper/raw/<stem>.srt
+output/<stem>/debug/video-generate-whisper-transcription/whisper/raw/<stem>.vtt
+output/<stem>/debug/video-generate-whisper-transcription/whisper/raw/<stem>.txt
+output/<stem>/debug/video-generate-whisper-transcription/whisper/raw/<stem>.tsv
+output/<stem>/debug/video-generate-whisper-transcription/whisper/postprocess/<stem>.vtt
+output/<stem>/debug/video-generate-whisper-transcription/whisper/postprocess/<stem>.txt
+output/<stem>/debug/video-generate-whisper-transcription/reports/text_transcription_report.json
 ```
 
 ## Desarrollo

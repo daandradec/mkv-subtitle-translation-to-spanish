@@ -1,4 +1,0 @@
-interface:
-  display_name: "MKV Subtitle Agentic Translation"
-  short_description: "Agentic MKV subtitle translation flow"
-  default_prompt: "Use $mkv-subtitle-agentic-translation to translate an MKV subtitle track to Spanish LatAm with agent review and TV-safe outputs."

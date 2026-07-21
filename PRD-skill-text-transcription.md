@@ -1,4 +1,4 @@
-# PRD: Skill `video-text-agent-transcription`
+# PRD: Skill `video-generate-whisper-transcription`
 
 ## Resumen
 
@@ -20,7 +20,7 @@ Este flujo no genera subtitulos incrustados, no remuxea el video y no traduce. S
 - No crear MKV final ni incrustar subtitulos.
 - No traducir entre idiomas.
 - No depender de API keys ni servicios externos.
-- No reemplazar `video-subtitle-agentic-transcription`; esta skill es solo textual.
+- No reemplazar `video-generate-new-subtitles-from-audio`; esta skill es solo textual.
 
 ## Flujo
 
@@ -33,12 +33,12 @@ Este flujo no genera subtitulos incrustados, no remuxea el video y no traduce. S
 4. Para cada video:
    - seleccionar audio por `-AudioStreamIndex`, default del contenedor o primera pista;
    - limpiar de forma segura y crear `output/<stem>/`;
-   - extraer WAV mono 16 kHz a `output/<stem>/debug/video-text-agent-transcription/audio/`;
+   - extraer WAV mono 16 kHz a `output/<stem>/debug/video-generate-whisper-transcription/audio/`;
    - ejecutar WhisperX o Whisper con `--output_format all`;
-   - conservar todos los formatos nativos en `output/<stem>/debug/video-text-agent-transcription/whisper/raw/`;
+   - conservar todos los formatos nativos en `output/<stem>/debug/video-generate-whisper-transcription/whisper/raw/`;
    - publicar el SRT limpio y generar VTT/TXT limpios en `whisper/postprocess/`;
    - leer los artefactos Whisper y generar `<videoname>.md`;
-   - escribir `text_transcription_report.json` bajo `debug/video-text-agent-transcription/reports/`.
+   - escribir `text_transcription_report.json` bajo `debug/video-generate-whisper-transcription/reports/`.
 5. En batch, continuar con los demas videos si uno falla y reportar fallos al final.
 
 ## Interfaz
@@ -46,14 +46,14 @@ Este flujo no genera subtitulos incrustados, no remuxea el video y no traduce. S
 Skill:
 
 ```text
-$video-text-agent-transcription "input/video.mp4"
-$video-text-agent-transcription "input/"
+$video-generate-whisper-transcription "input/video.mp4"
+$video-generate-whisper-transcription "input/"
 ```
 
 Script:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\src\video-text-agent-transcription\transcribe_video_text.ps1 `
+powershell -ExecutionPolicy Bypass -File .\src\video-generate-whisper-transcription\transcribe_video_text.ps1 `
   -InputPath ".\input\video.mp4" `
   -Backend auto `
   -WhisperXModel large-v3 `

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Video Generate Whisper Transcription"
+  short_description: "Create clean Markdown transcripts from videos"
+  default_prompt: "Use $video-generate-whisper-transcription to detect and confirm the spoken language, transcribe with WhisperX or Whisper fallback, publish only clean SRT and RAG-ready Markdown, and keep native formats under debug."

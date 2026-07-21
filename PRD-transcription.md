@@ -2,7 +2,7 @@
 
 ## Resumen
 
-Crear la skill local `video-subtitle-agentic-transcription` para procesar videos sin subtitulos incorporados. El flujo transcribe el audio en su idioma original, genera subtitulos base y convierte/remuxea el video a un MKV nuevo con una pista de subtitulos incrustada. Ese MKV queda listo para usarse despues con `mkv-subtitle-agentic-translation`.
+Crear la skill local `video-generate-new-subtitles-from-audio` para procesar videos sin subtitulos incorporados. El flujo transcribe el audio en su idioma original, genera subtitulos base y convierte/remuxea el video a un MKV nuevo con una pista de subtitulos incrustada. Ese MKV queda listo para usarse despues con `video-generate-traslated-subtitles-from-existing-subtitles`.
 
 El backend preferido es WhisperX por sus timestamps/alineacion, VAD y procesamiento por lotes. Si WhisperX no queda disponible dentro del entorno virtual local, el flujo usa `openai-whisper` como fallback desde ese mismo entorno. v1 no incluye diarizacion ni requiere API keys.
 
@@ -19,14 +19,14 @@ Fuentes consideradas: OpenAI Whisper (`https://github.com/openai/whisper`), Whis
 - Permitir cualquier archivo de video con audio decodificable por FFmpeg/Whisper; ejemplos comunes: MKV, MP4, MOV, M4V, WebM, AVI, WMV, FLV, TS/M2TS, MPEG/MPG, 3GP/3G2 y OGV.
 - Procesar solo un video por ejecucion.
 - Seleccionar el audio default o permitir override con `-AudioStreamIndex`.
-- Extraer audio a WAV mono 16 kHz reproducible en `output/<stem>/debug/video-subtitle-agentic-transcription/audio/`.
+- Extraer audio a WAV mono 16 kHz reproducible en `output/<stem>/debug/video-generate-new-subtitles-from-audio/audio/`.
 - Transcribir al idioma original:
   - usar WhisperX cuando este disponible;
   - usar `openai-whisper` si WhisperX no existe;
   - permitir `-Language`, pero si falta dejar que el backend detecte idioma.
 - Generar `output/<stem>/<stem>.transcribed.mkv` como entregable predeterminado.
 - Generar opcionalmente `output/<stem>/sidecars/<stem>.transcribed.ass` con `--export-ass-file-subtitles`, extrayéndolo del MKV ya normalizado.
-- Escribir reportes en `output/<stem>/debug/video-subtitle-agentic-transcription/reports/`.
+- Escribir reportes en `output/<stem>/debug/video-generate-new-subtitles-from-audio/reports/`.
 - Incrustar la pista SRT transcrita en un MKV final con `mkvmerge`, sin recodificar video/audio cuando el contenedor permita copy remux.
 - Mantener pistas originales y marcar la pista transcrita como default.
 - Avisar si el idioma detectado no esta dentro de los idiomas soportados por la skill de traduccion.
@@ -73,7 +73,7 @@ whisper "<audio.wav>" --model turbo --task transcribe --device cuda --fp16 True 
 
 ## Compatibilidad con Traduccion
 
-El MKV generado debe ser aceptado por `mkv-subtitle-agentic-translation`. Si la pista transcrita queda en SRT, la skill de traduccion debe poder extraerla y convertirla a ASS simple con el modulo compartido `video_toolkit.subtitles.text` antes de aplicar mapas de traduccion.
+El MKV generado debe ser aceptado por `video-generate-traslated-subtitles-from-existing-subtitles`. Si la pista transcrita queda en SRT, la skill de traduccion debe poder extraerla y convertirla a ASS simple con el modulo compartido `video_toolkit.subtitles.text` antes de aplicar mapas de traduccion.
 
 Si el idioma detectado no pertenece a los idiomas traducibles actuales, el MKV transcrito sigue siendo valido, pero la traduccion automatica posterior puede detenerse por idioma no soportado.
 
@@ -87,7 +87,7 @@ Si el idioma detectado no pertenece a los idiomas traducibles actuales, el MKV t
   - mapeo de idioma produce metadata MKV razonable y warnings para idiomas no traducibles.
 - Script tests:
   - parse de `src/shared/powershell/init_python_env.ps1`;
-  - parse de `src/video-subtitle-agentic-transcription/transcribe_video_audio.ps1`;
+  - parse de `src/video-generate-new-subtitles-from-audio/transcribe_video_audio.ps1`;
   - `py_compile` de modulos nuevos.
 - Validacion manual:
   - MKV/MP4 sin subtitulos genera un MKV transcrito y ASS sidecar sólo cuando se solicita;

@@ -8,9 +8,9 @@ This repository contains a Python and PowerShell toolkit for video transcription
 
 - `powershell -ExecutionPolicy Bypass -File .\src\shared\powershell\init_python_env.ps1`: create and validate the local Python 3.12 `.venv`, then install `requirements.txt` and optional WhisperX dependencies.
 - `powershell -ExecutionPolicy Bypass -File .\src\shared\powershell\run_tests.ps1`: run the full unit test suite across shared code and all three skills.
-- `powershell -ExecutionPolicy Bypass -File .\src\mkv-subtitle-agentic-translation\traducir_subs_mkv.ps1 -InputMkv ".\input\video.mkv"`: run the MKV subtitle translation workflow.
-- `powershell -ExecutionPolicy Bypass -File .\src\video-subtitle-agentic-transcription\transcribe_video_audio.ps1 -InputVideo ".\input\video.mkv"`: transcribe video audio and produce a subtitled MKV.
-- `powershell -ExecutionPolicy Bypass -File .\src\video-text-agent-transcription\transcribe_video_text.ps1 -InputPath ".\input\video.mkv"`: transcribe video audio into text artifacts.
+- `powershell -ExecutionPolicy Bypass -File .\src\video-generate-traslated-subtitles-from-existing-subtitles\traducir_subs_mkv.ps1 -InputMkv ".\input\video.mkv"`: run the MKV subtitle translation workflow.
+- `powershell -ExecutionPolicy Bypass -File .\src\video-generate-new-subtitles-from-audio\transcribe_video_audio.ps1 -InputVideo ".\input\video.mkv"`: transcribe video audio and produce a subtitled MKV.
+- `powershell -ExecutionPolicy Bypass -File .\src\video-generate-whisper-transcription\transcribe_video_text.ps1 -InputPath ".\input\video.mkv"`: transcribe video audio into text artifacts.
 
 External tools must be on `PATH`: `ffmpeg`, `ffprobe`, and `mkvmerge`.
 

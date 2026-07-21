@@ -1,4 +1,0 @@
-interface:
-  display_name: "Video Text Agent Transcription"
-  short_description: "Create clean Markdown transcripts from videos"
-  default_prompt: "Use $video-text-agent-transcription to detect and confirm the spoken language, transcribe with WhisperX or Whisper fallback, publish only clean SRT and RAG-ready Markdown, and keep native formats under debug."

@@ -8,9 +8,9 @@ from pathlib import Path
 SRC_DIR = Path(__file__).resolve().parents[2]
 PYTHON_ROOTS = [
     SRC_DIR / "shared" / "python",
-    SRC_DIR / "mkv-subtitle-agentic-translation" / "python",
-    SRC_DIR / "video-subtitle-agentic-transcription" / "python",
-    SRC_DIR / "video-text-agent-transcription" / "python",
+    SRC_DIR / "video-generate-traslated-subtitles-from-existing-subtitles" / "python",
+    SRC_DIR / "video-generate-new-subtitles-from-audio" / "python",
+    SRC_DIR / "video-generate-whisper-transcription" / "python",
 ]
 for root in reversed(PYTHON_ROOTS):
     value = str(root)
@@ -21,22 +21,22 @@ for root in reversed(PYTHON_ROOTS):
 class CanonicalEntrypointTests(unittest.TestCase):
     def test_canonical_python_modules_expose_main(self):
         modules = [
-            "mkv_subtitle_agentic_translation.ass_apply_translations",
-            "mkv_subtitle_agentic_translation.ass_to_tv_safe_srt",
-            "mkv_subtitle_agentic_translation.normalize_spanish_subtitles",
-            "mkv_subtitle_agentic_translation.normalize_translation_maps",
-            "mkv_subtitle_agentic_translation.subtitle_language",
-            "mkv_subtitle_agentic_translation.translation_maps",
-            "mkv_subtitle_agentic_translation.translation_terms",
-            "mkv_subtitle_agentic_translation.workflow_checkpoint",
-            "mkv_subtitle_agentic_translation.workspace",
+            "video_generate_traslated_subtitles_from_existing_subtitles.ass_apply_translations",
+            "video_generate_traslated_subtitles_from_existing_subtitles.ass_to_tv_safe_srt",
+            "video_generate_traslated_subtitles_from_existing_subtitles.normalize_spanish_subtitles",
+            "video_generate_traslated_subtitles_from_existing_subtitles.normalize_translation_maps",
+            "video_generate_traslated_subtitles_from_existing_subtitles.subtitle_language",
+            "video_generate_traslated_subtitles_from_existing_subtitles.translation_maps",
+            "video_generate_traslated_subtitles_from_existing_subtitles.translation_terms",
+            "video_generate_traslated_subtitles_from_existing_subtitles.workflow_checkpoint",
+            "video_generate_traslated_subtitles_from_existing_subtitles.workspace",
             "video_toolkit.subtitles.text",
             "video_toolkit.transcription.backend",
-            "video_subtitle_agentic_transcription.postprocess",
-            "video_subtitle_agentic_transcription.remux",
-            "video_subtitle_agentic_transcription.workspace",
-            "video_text_agent_transcription.postprocess",
-            "video_text_agent_transcription.workspace",
+            "video_generate_new_subtitles_from_audio.postprocess",
+            "video_generate_new_subtitles_from_audio.remux",
+            "video_generate_new_subtitles_from_audio.workspace",
+            "video_generate_whisper_transcription.postprocess",
+            "video_generate_whisper_transcription.workspace",
         ]
         for module_name in modules:
             with self.subTest(module=module_name):
@@ -56,10 +56,10 @@ class CanonicalEntrypointTests(unittest.TestCase):
 
     def test_src_root_contains_only_canonical_projects(self):
         expected = {
-            "mkv-subtitle-agentic-translation",
+            "video-generate-traslated-subtitles-from-existing-subtitles",
             "shared",
-            "video-subtitle-agentic-transcription",
-            "video-text-agent-transcription",
+            "video-generate-new-subtitles-from-audio",
+            "video-generate-whisper-transcription",
         }
         entries = {entry.name for entry in SRC_DIR.iterdir()}
         self.assertEqual(entries, expected)

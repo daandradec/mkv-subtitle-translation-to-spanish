@@ -8,15 +8,15 @@ from pathlib import Path
 SRC_DIR = Path(__file__).resolve().parents[2]
 PYTHON_ROOTS = [
     SRC_DIR / "shared" / "python",
-    SRC_DIR / "mkv-subtitle-agentic-translation" / "python",
-    SRC_DIR / "video-subtitle-agentic-transcription" / "python",
-    SRC_DIR / "video-text-agent-transcription" / "python",
+    SRC_DIR / "video-generate-traslated-subtitles-from-existing-subtitles" / "python",
+    SRC_DIR / "video-generate-new-subtitles-from-audio" / "python",
+    SRC_DIR / "video-generate-whisper-transcription" / "python",
 ]
 TEST_DIRS = [
     SRC_DIR / "shared" / "tests",
-    SRC_DIR / "mkv-subtitle-agentic-translation" / "tests",
-    SRC_DIR / "video-subtitle-agentic-transcription" / "tests",
-    SRC_DIR / "video-text-agent-transcription" / "tests",
+    SRC_DIR / "video-generate-traslated-subtitles-from-existing-subtitles" / "tests",
+    SRC_DIR / "video-generate-new-subtitles-from-audio" / "tests",
+    SRC_DIR / "video-generate-whisper-transcription" / "tests",
 ]
 
 

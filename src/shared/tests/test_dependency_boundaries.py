@@ -5,9 +5,9 @@ from pathlib import Path
 
 SRC_DIR = Path(__file__).resolve().parents[2]
 SKILL_PACKAGES = {
-    "mkv-subtitle-agentic-translation": "mkv_subtitle_agentic_translation",
-    "video-subtitle-agentic-transcription": "video_subtitle_agentic_transcription",
-    "video-text-agent-transcription": "video_text_agent_transcription",
+    "video-generate-traslated-subtitles-from-existing-subtitles": "video_generate_traslated_subtitles_from_existing_subtitles",
+    "video-generate-new-subtitles-from-audio": "video_generate_new_subtitles_from_audio",
+    "video-generate-whisper-transcription": "video_generate_whisper_transcription",
 }
 LEGACY_FLAT_MODULES = {
     "ass_apply_translations",

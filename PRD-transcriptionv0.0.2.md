@@ -2,7 +2,7 @@
 
 ## Resumen
 
-Actualizar el postproceso de `video-text-agent-transcription` para que, despues de generar los archivos nativos de WhisperX/Whisper y las salidas limpias, el Markdown final use timestamps por parrafo en lugar de secciones fijas de aproximadamente 3 minutos.
+Actualizar el postproceso de `video-generate-whisper-transcription` para que, despues de generar los archivos nativos de WhisperX/Whisper y las salidas limpias, el Markdown final use timestamps por parrafo en lugar de secciones fijas de aproximadamente 3 minutos.
 
 El objetivo es que el Markdown sea mas util como base de conocimiento: cada idea o bloque textual tendra una referencia temporal mas precisa sin poner timestamps en cada frase.
 

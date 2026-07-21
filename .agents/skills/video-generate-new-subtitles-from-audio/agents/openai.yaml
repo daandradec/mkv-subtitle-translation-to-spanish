@@ -1,0 +1,4 @@
+interface:
+  display_name: "Video Generate New Subtitles From Audio"
+  short_description: "Create embedded MKV subtitles from video audio"
+  default_prompt: "Use $video-generate-new-subtitles-from-audio to transcribe video audio locally with WhisperX or Whisper fallback and output an MKV with embedded source-language subtitles."

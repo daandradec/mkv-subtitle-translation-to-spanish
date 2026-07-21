@@ -1,4 +1,0 @@
-interface:
-  display_name: "Video Subtitle Agentic Transcription"
-  short_description: "Create embedded MKV subtitles from video audio"
-  default_prompt: "Use $video-subtitle-agentic-transcription to transcribe video audio locally with WhisperX or Whisper fallback and output an MKV with embedded source-language subtitles."
