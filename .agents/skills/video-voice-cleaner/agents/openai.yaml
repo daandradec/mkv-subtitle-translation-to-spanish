@@ -1,5 +1,0 @@
-schema_version: "1.0"
-interface:
-  display_name: "Video Voice Cleaner"
-  short_description: "Clean and normalize video voices before transcription"
-  default_prompt: "Use $video-voice-cleaner to clean and normalize voices in a video, producing an MKV with clean FLAC audio as default while preserving original audio."

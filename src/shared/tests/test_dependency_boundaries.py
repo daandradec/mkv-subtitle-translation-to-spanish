@@ -8,7 +8,6 @@ SKILL_PACKAGES = {
     "mkv-subtitle-agentic-translation": "mkv_subtitle_agentic_translation",
     "video-subtitle-agentic-transcription": "video_subtitle_agentic_transcription",
     "video-text-agent-transcription": "video_text_agent_transcription",
-    "video-voice-cleaner": "video_voice_cleaner",
 }
 LEGACY_FLAT_MODULES = {
     "ass_apply_translations",
@@ -26,7 +25,6 @@ LEGACY_FLAT_MODULES = {
     "transcription_workspace",
     "translation_maps",
     "translation_terms",
-    "voice_cleaner",
 }
 
 

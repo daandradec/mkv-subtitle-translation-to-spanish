@@ -4,8 +4,7 @@ Toolkit local en Python 3.12 y PowerShell para:
 
 - traducir pistas de subtítulos MKV a español latinoamericano;
 - transcribir audio y crear un MKV con subtítulos sincronizados;
-- transcribir video a archivos de texto para RAG;
-- limpiar y normalizar voces conservando el audio original.
+- transcribir video a archivos de texto para RAG.
 
 Los launchers canónicos viven en `src/<workflow>/`; el código reutilizable está en `src/shared/` y las instrucciones para agentes en `.agents/skills/`.
 
@@ -164,25 +163,6 @@ output/<stem>/debug/video-text-agent-transcription/whisper/raw/<stem>.tsv
 output/<stem>/debug/video-text-agent-transcription/whisper/postprocess/<stem>.vtt
 output/<stem>/debug/video-text-agent-transcription/whisper/postprocess/<stem>.txt
 output/<stem>/debug/video-text-agent-transcription/reports/text_transcription_report.json
-```
-
-## Limpiar voz
-
-```powershell
-powershell -ExecutionPolicy Bypass -File `
-  .\src\video-voice-cleaner\clean_video_voice.ps1 `
-  -InputVideo ".\input\video.mp4" `
-  -Profile conservative
-```
-
-Perfiles disponibles: `conservative`, `balanced` y `asr`. El resultado conserva las pistas originales y agrega FLAC limpio como audio predeterminado:
-
-```text
-output/<stem>/<stem>.voice-cleaned.mkv
-output/<stem>/<stem>.voice-cleaned.flac
-output/<stem>/debug/video-voice-cleaner/work/
-output/<stem>/debug/video-voice-cleaner/reports/
-output/<stem>/debug/video-voice-cleaner/samples/
 ```
 
 ## Desarrollo

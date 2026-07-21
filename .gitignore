@@ -26,7 +26,6 @@ prd/
 !PRD.md
 !PRD-spanish-normalization.md
 !PRD-transcription.md
-!PRD-voice-cleaner.md
 !PRD-skill-text-transcription.md
 !PRD-transcriptionv0.0.2.md
 
@@ -57,8 +56,6 @@ cache/
 models/
 !models/
 models/*
-!models/voice-cleaner/
-!models/voice-cleaner/std.rnnn
 model_cache/
 whisper_cache/
 whisper_models/

@@ -11,7 +11,6 @@ PYTHON_ROOTS = [
     SRC_DIR / "mkv-subtitle-agentic-translation" / "python",
     SRC_DIR / "video-subtitle-agentic-transcription" / "python",
     SRC_DIR / "video-text-agent-transcription" / "python",
-    SRC_DIR / "video-voice-cleaner" / "python",
 ]
 for root in reversed(PYTHON_ROOTS):
     value = str(root)
@@ -38,7 +37,6 @@ class CanonicalEntrypointTests(unittest.TestCase):
             "video_subtitle_agentic_transcription.workspace",
             "video_text_agent_transcription.postprocess",
             "video_text_agent_transcription.workspace",
-            "video_voice_cleaner.voice_cleaner",
         ]
         for module_name in modules:
             with self.subTest(module=module_name):
@@ -62,7 +60,6 @@ class CanonicalEntrypointTests(unittest.TestCase):
             "shared",
             "video-subtitle-agentic-transcription",
             "video-text-agent-transcription",
-            "video-voice-cleaner",
         }
         entries = {entry.name for entry in SRC_DIR.iterdir()}
         self.assertEqual(entries, expected)

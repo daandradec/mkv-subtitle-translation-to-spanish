@@ -1,4 +1,4 @@
-"""Deterministic output-folder naming shared by all video skills."""
+"""Deterministic output-folder naming shared by the video workflows."""
 
 from pathlib import Path
 

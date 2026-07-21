@@ -1,4 +1,4 @@
-"""Discover and run tests from shared code and all four skill projects."""
+"""Discover and run tests from shared code and all three skill projects."""
 
 import sys
 import unittest
@@ -11,14 +11,12 @@ PYTHON_ROOTS = [
     SRC_DIR / "mkv-subtitle-agentic-translation" / "python",
     SRC_DIR / "video-subtitle-agentic-transcription" / "python",
     SRC_DIR / "video-text-agent-transcription" / "python",
-    SRC_DIR / "video-voice-cleaner" / "python",
 ]
 TEST_DIRS = [
     SRC_DIR / "shared" / "tests",
     SRC_DIR / "mkv-subtitle-agentic-translation" / "tests",
     SRC_DIR / "video-subtitle-agentic-transcription" / "tests",
     SRC_DIR / "video-text-agent-transcription" / "tests",
-    SRC_DIR / "video-voice-cleaner" / "tests",
 ]
 
 
