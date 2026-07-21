@@ -3,16 +3,16 @@
 Before finishing script changes, run:
 
 ```powershell
-.\.venv\Scripts\python.exe -m py_compile .\src\text_transcription_workspace.py .\src\text_transcription_postprocess.py
-.\.venv\Scripts\python.exe .\src\test_text_transcription.py
-.\.venv\Scripts\python.exe -m unittest discover -s .\src -p "test_*.py"
+$env:PYTHONPATH = ".\src\shared\python;.\src\video-text-agent-transcription\python"
+.\.venv\Scripts\python.exe -m unittest discover -s .\src\video-text-agent-transcription\tests -p "test_*.py"
+powershell -ExecutionPolicy Bypass -File .\src\shared\powershell\run_tests.ps1
 ```
 
 Also parse the PowerShell script:
 
 ```powershell
 $null = [System.Management.Automation.Language.Parser]::ParseFile(
-  (Resolve-Path .\src\transcribe_video_text.ps1),
+  (Resolve-Path .\src\video-text-agent-transcription\transcribe_video_text.ps1),
   [ref]$null,
   [ref]$null
 )

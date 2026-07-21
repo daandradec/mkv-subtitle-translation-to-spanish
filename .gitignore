@@ -19,8 +19,6 @@ output/
 *.ass
 *.srt
 *.vtt
-subtitle_work/
-translations/
 
 # PRD drafts/generated variants; keep the canonical root PRD.
 PRD*.md
@@ -32,8 +30,7 @@ prd/
 !PRD-skill-text-transcription.md
 !PRD-transcriptionv0.0.2.md
 
-# Local tools and downloaded installers/packages
-tools/
+# Downloaded installers/packages
 *.exe
 *.msi
 *.zip

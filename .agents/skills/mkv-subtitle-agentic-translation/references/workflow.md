@@ -7,16 +7,13 @@
 - If `/input` has no MKV files and the user did not provide a valid MKV path, stop before spawning subagents and say: "No se encontró ningún video MKV en la carpeta `input`. Para ejecutar este flujo es obligatorio ubicar un archivo de video `.mkv` con subtítulos incrustados en `input/` o indicar la ruta exacta del archivo."
 - If `/input` has multiple MKV files, require exactly one explicit input MKV name/path for the run. Do not choose automatically.
 - If the user provides an input name/path, verify it resolves to exactly one existing `.mkv` file before doing any extraction, translation, or remuxing.
-- Create dedicated per-video workspaces:
-  - `subtitle_work/<workspace-id>/`
-  - `translations/<workspace-id>/`
-  - `output/<workspace-id>/`
-- The same workspace id must be used for all three directories. Format: up to 24 semantic characters from complete words in the video name, then `-`, then 6 uppercase alphanumeric characters.
-- Do not write run-specific files directly under `subtitle_work/`, `translations/`, or `output/`.
-- Write final deliverables to `output/<workspace-id>/`.
-- Use `subtitle_work/` or a temporary folder for extraction, grouping, review, and debug artifacts.
+- Use the exact source filename without its extension as `<stem>`; never add a random/hash suffix or accept a custom workspace id.
+- Write only the final MKV deliverable to `output/<stem>/`; do not publish ASS/SRT sidecars for this workflow.
+- Write source subtitles under `output/<stem>/debug/mkv-subtitle-agentic-translation/subtitles/source/` and generated ASS/SRT files under `output/<stem>/debug/mkv-subtitle-agentic-translation/subtitles/generated/`.
+- Write grouping, review, translation maps, checkpoints, postprocessing artifacts, and reports under their appropriate subdirectories in `output/<stem>/debug/mkv-subtitle-agentic-translation/`.
+- A fresh run clears the existing contents of `output/<stem>/` after validating that it is a direct child of `output/` and contains no reparse points. Use `-Resume` to preserve an existing translation checkpoint and its maps.
 - Never commit media, extracted subtitles, or generated outputs.
-- Initialize `.venv/` with Python 3.12 using `src/init_python_env.ps1` before running Python helpers. Use `.venv/Scripts/python.exe`, not the global Python.
+- Initialize `.venv/` with Python 3.12 using `src/shared/powershell/init_python_env.ps1` before running Python helpers. Use `.venv/Scripts/python.exe`, not the global Python.
 - Plan subagent usage in small batches before spawning any role. Keep at most two active subagents, wait for results, integrate them, and close completed agents before the next batch.
 
 ## 1.1 Agent Lifecycle Checkpoint
@@ -35,7 +32,7 @@
 - When no exact stream is provided, use the default embedded subtitle track when it is textual and language-supported.
 - If there is no usable default subtitle track, inspect all subtitle candidates. Exclude `Forced` tracks when complete tracks exist, avoid CC/SDH unless requested, prefer higher event coverage/duration, and prefer the likely original/source-language track when metadata supports it.
 - Do not assume English; record detected source language and confidence.
-- Validate the detected source language with `src/subtitle_language.py`.
+- Validate the detected source language with `mkv_subtitle_agentic_translation.subtitle_language` from `src/mkv-subtitle-agentic-translation/python/`.
 - If the selected MKV has no embedded subtitle streams, stop before processing and say: "No se encontraron subtítulos incrustados en el archivo original, por lo que este flujo no puede traducirlo a español. Cuando quieras crear subtítulos desde el audio del video, usa la skill `video-subtitle-agentic-transcription`, que estará orientada a transcribir las voces y generar un MKV con subtítulos base para un flujo posterior de traducción."
 - Continue only for English, Mandarin Chinese, Hindi, Portuguese, French, Russian, German, Japanese, Wu Chinese/Shanghainese, Korean, or Italian.
 - Stop before extraction when the subtitle language is unsupported or the codec is not textual.
@@ -43,10 +40,14 @@
 ## 3. Extract and Parse Subtitles
 
 - Extract subtitles without recoding when possible.
+- The canonical launcher performs this extraction before checking for translation maps.
+- If maps are absent, treat `[CHECKPOINT:AWAITING_TRANSLATION_MAPS]` as a required agent handoff, not as completion or a broken import.
+- Read `output/<stem>/debug/mkv-subtitle-agentic-translation/checkpoints/translation_checkpoint.json`; it records the exact source ASS, language, stream/track IDs, map directory, and resume command.
+- Generate maps from that extracted subtitle and run the recorded command with `-Resume`, `SourceSubtitleStreamIndex`, and `SourceMkvTrackId`.
 - Parse with format-aware logic:
   - ASS: split `Dialogue:` into 10 fields and preserve timing/style/effect.
   - SRT/VTT: parse cues structurally.
-- Convert SRT/VTT/WebVTT input to simple ASS with `src/subtitle_text_to_ass.py` before using ASS-only pipeline stages.
+- Convert SRT/VTT/WebVTT input to simple ASS with the shared `video_toolkit.subtitles.text` module before using ASS-only pipeline stages.
 - Separate visible text from tags/effects.
 
 ## 4. Build Semantic Units
@@ -68,8 +69,8 @@
 - Translate grouped text to Spanish LatAm.
 - Keep translations concise enough for subtitle reading speed.
 - Run linguistic review after merging dialogue and song translations.
-- Resolve or generate local translation maps under `translations/<workspace-id>/<source_lang>/` for every supported language, including English.
-- Do not rely on legacy root-level English maps. If old English maps exist, migrate or copy them into `translations/<workspace-id>/en/` and validate checksums before using them.
+- Resolve or generate local translation maps under `output/<stem>/debug/mkv-subtitle-agentic-translation/translations/<source_lang>/` for every supported language, including English.
+- Do not rely on legacy root-level maps. Migrate only maps verified against the same extracted source subtitle.
 - Do not reuse maps across different source languages or unrelated videos.
 - Maintain and apply a local term map/glossary for recurring names, places, factions, ranks, and culturally specific terms.
 
@@ -78,11 +79,13 @@
 - Produce the subtitle file used for muxing.
 - When ASS complexity is high, also produce a TV-safe SRT or plain ASS.
 - Remux with `mkvmerge`, not ffmpeg, to avoid poorly interleaved subtitle tracks.
-- Preserve original subtitle tracks but mark all of them non-default. Set Spanish language metadata and make only the intended Spanish track default, normally `Español LatAm TV-safe`.
+- Preserve original subtitle tracks but mark all of them non-default. Put the generated Spanish track first among subtitle tracks. When both formats are embedded, make `Español LatAm` ASS the only default and place the non-default `Español LatAm TV-safe` SRT immediately after it. When only one format is embedded, make that Spanish track first and default.
 
 ## 8. Validate
 
 - Extract the Spanish subtitle track from the final MKV and inspect samples.
 - Confirm readable Spanish near early dialogue and known song timestamps.
 - Confirm no visible ASS commands, drawing paths, or numeric garbage.
-- Confirm `output/<workspace-id>/` contains the MKV and subtitle file(s).
+- Confirm the final MKV is the only file at the root of `output/<stem>/`, generated ASS/SRT files are under `debug/mkv-subtitle-agentic-translation/subtitles/generated/`, and no external subtitle can appear as a `[Local]` player track.
+- Confirm the first subtitle track is Spanish, only the intended Spanish track has `default=1`, and every original subtitle track has `default=0`.
+- Persist the machine-readable result at `debug/mkv-subtitle-agentic-translation/reports/remux_validation_report.json` and fail the workflow when the order/default contract is not met.

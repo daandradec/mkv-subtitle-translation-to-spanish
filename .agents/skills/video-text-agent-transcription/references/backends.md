@@ -1,6 +1,6 @@
 # Backends
 
-Use `src/transcription_backend.py` as the single source for backend command construction.
+Use the shared `video_toolkit.transcription.backend` module under `src/shared/python/` as the single source for backend command construction.
 
 - `auto`: prefer WhisperX; fallback to OpenAI Whisper.
 - `whisperx`: use `large-v3`, CUDA, `float16`, and batch size 8 by default.

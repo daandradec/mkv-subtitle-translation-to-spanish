@@ -19,16 +19,14 @@ Fuentes consideradas: OpenAI Whisper (`https://github.com/openai/whisper`), Whis
 - Permitir cualquier archivo de video con audio decodificable por FFmpeg/Whisper; ejemplos comunes: MKV, MP4, MOV, M4V, WebM, AVI, WMV, FLV, TS/M2TS, MPEG/MPG, 3GP/3G2 y OGV.
 - Procesar solo un video por ejecucion.
 - Seleccionar el audio default o permitir override con `-AudioStreamIndex`.
-- Extraer audio a WAV mono 16 kHz reproducible en `subtitle_work/<workspace-id>/`.
+- Extraer audio a WAV mono 16 kHz reproducible en `output/<stem>/debug/video-subtitle-agentic-transcription/audio/`.
 - Transcribir al idioma original:
   - usar WhisperX cuando este disponible;
   - usar `openai-whisper` si WhisperX no existe;
   - permitir `-Language`, pero si falta dejar que el backend detecte idioma.
-- Generar entregables en `output/<workspace-id>/`:
-  - `<stem>.transcribed.srt`;
-  - `<stem>.transcribed.ass`;
-  - `<stem>.transcribed.mkv`.
-- Escribir reporte en `subtitle_work/<workspace-id>/transcription_report.json`.
+- Generar `output/<stem>/<stem>.transcribed.mkv` como entregable predeterminado.
+- Generar opcionalmente `output/<stem>/sidecars/<stem>.transcribed.ass` con `--export-ass-file-subtitles`, extrayéndolo del MKV ya normalizado.
+- Escribir reportes en `output/<stem>/debug/video-subtitle-agentic-transcription/reports/`.
 - Incrustar la pista SRT transcrita en un MKV final con `mkvmerge`, sin recodificar video/audio cuando el contenedor permita copy remux.
 - Mantener pistas originales y marcar la pista transcrita como default.
 - Avisar si el idioma detectado no esta dentro de los idiomas soportados por la skill de traduccion.
@@ -38,7 +36,7 @@ Fuentes consideradas: OpenAI Whisper (`https://github.com/openai/whisper`), Whis
 1. Validar Python 3.12 y crear/activar `.venv/`.
 2. Instalar o actualizar dependencias cuando cambie `requirements.txt` o `requirements-whisperx.txt`.
 3. Validar `input/`, archivo de video, FFmpeg, FFprobe y MKVToolNix.
-4. Crear workspace usando el mismo identificador `24 + "-" + 6` del flujo de traduccion.
+4. Limpiar de forma segura y crear el destino determinista `output/<stem>/`, sin hash ni identificador personalizado.
 5. Inspeccionar audio con `ffprobe` y seleccionar la pista adecuada.
 6. Extraer audio con:
 
@@ -59,8 +57,8 @@ whisperx "<audio.wav>" --model large-v3 --device cuda --compute_type float16 --b
 whisper "<audio.wav>" --model turbo --task transcribe --device cuda --fp16 True --output_dir "<workdir>" --output_format all
 ```
 
-8. Postprocesar el SRT generado: limpiar cues vacios, validar tiempos y generar ASS simple.
-9. Remuxear con `mkvmerge` y agregar metadata de idioma/titulo. Si `mkvmerge` no puede leer el contenedor fuente, crear primero un MKV intermedio con `ffmpeg -map 0 -c copy`.
+8. Postprocesar el SRT generado: limpiar cues vacios y validar tiempos; conservarlo sólo como entrada interna bajo `debug/`.
+9. Remuxear Matroska/WebM con `mkvmerge`. Para MP4/MOV y otros contenedores, mapear fuente y SRT juntos en una sola invocación FFmpeg para aplicar una transformación temporal uniforme y evitar offsets por edit lists/preroll.
 10. Validar que el MKV final contenga la pista transcrita.
 
 ## Backend y Calidad
@@ -75,24 +73,24 @@ whisper "<audio.wav>" --model turbo --task transcribe --device cuda --fp16 True 
 
 ## Compatibilidad con Traduccion
 
-El MKV generado debe ser aceptado por `mkv-subtitle-agentic-translation`. Si la pista transcrita queda en SRT, la skill de traduccion debe poder extraerla y convertirla a ASS simple con `src/subtitle_text_to_ass.py` antes de aplicar mapas de traduccion.
+El MKV generado debe ser aceptado por `mkv-subtitle-agentic-translation`. Si la pista transcrita queda en SRT, la skill de traduccion debe poder extraerla y convertirla a ASS simple con el modulo compartido `video_toolkit.subtitles.text` antes de aplicar mapas de traduccion.
 
 Si el idioma detectado no pertenece a los idiomas traducibles actuales, el MKV transcrito sigue siendo valido, pero la traduccion automatica posterior puede detenerse por idioma no soportado.
 
 ## Validacion
 
 - Unit tests:
-  - workspace de transcripcion usa `24 + "-" + 6`;
+  - salida usa el stem completo y limpia sólo su directorio determinista;
   - seleccion de backend `auto`, fallback y error sin backend;
   - postproceso rechaza transcripciones vacias;
-  - postproceso genera SRT limpio, ASS simple y reporte;
+  - postproceso genera SRT interno limpio y reporte;
   - mapeo de idioma produce metadata MKV razonable y warnings para idiomas no traducibles.
 - Script tests:
-  - parse de `src/init_python_env.ps1`;
-  - parse de `src/transcribe_video_audio.ps1`;
+  - parse de `src/shared/powershell/init_python_env.ps1`;
+  - parse de `src/video-subtitle-agentic-transcription/transcribe_video_audio.ps1`;
   - `py_compile` de modulos nuevos.
 - Validacion manual:
-  - MKV/MP4 sin subtitulos genera SRT, ASS y MKV transcrito;
+  - MKV/MP4 sin subtitulos genera un MKV transcrito y ASS sidecar sólo cuando se solicita;
   - videos con varios audios permiten `-AudioStreamIndex`;
   - fallback Whisper muestra aviso cuando WhisperX no existe;
   - MKV transcrito se puede usar luego con la skill de traduccion.

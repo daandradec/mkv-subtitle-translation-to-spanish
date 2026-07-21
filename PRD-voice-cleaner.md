@@ -21,7 +21,7 @@ La skill no se conecta automaticamente con `video-subtitle-agentic-transcription
    - `-AudioStreamIndex` si el usuario lo pasa;
    - si no, audio default;
    - si no hay default, primer audio.
-3. Crear workspace `subtitle_work/<workspace-id>/voice-cleaner/` y entregables en `output/<workspace-id>/`.
+3. Limpiar de forma segura y crear `output/<stem>/`; guardar helpers en `output/<stem>/debug/video-voice-cleaner/`.
 4. Validar modelo RNNoise versionado en `models/voice-cleaner/std.rnnn`.
 5. Crear un FLAC premaster con filtros conservadores de voz:
    - `adeclip`;
@@ -53,7 +53,7 @@ La skill no se conecta automaticamente con `video-subtitle-agentic-transcription
 ## Interfaz
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\src\clean_video_voice.ps1 `
+powershell -ExecutionPolicy Bypass -File .\src\video-voice-cleaner\clean_video_voice.ps1 `
   -InputVideo ".\input\video.mp4" `
   -Profile conservative `
   -AudioStreamIndex -1 `
@@ -63,7 +63,6 @@ powershell -ExecutionPolicy Bypass -File .\src\clean_video_voice.ps1 `
 Parametros:
 
 - `-InputVideo`: ruta del video. Si falta, auto-detecta solo cuando hay exactamente un video con audio en `input/`.
-- `-WorkspaceId`: opcional, permite reutilizar o fijar workspace.
 - `-AudioStreamIndex`: opcional; `-1` usa default, luego primer audio.
 - `-Profile`: `conservative`, `balanced`, `asr`; default `conservative`.
 - `-OutputFormat`: `mkv` en v1.
@@ -73,11 +72,11 @@ Parametros:
 
 Entregables:
 
-- `output/<workspace-id>/<stem>.voice-cleaned.mkv`
-- `output/<workspace-id>/<stem>.voice-cleaned.flac`
-- `subtitle_work/<workspace-id>/voice_cleaner_report.json`
-- diagnosticos en `subtitle_work/<workspace-id>/voice-cleaner/`
-- muestras opcionales en `output/<workspace-id>/voice-cleaner-samples/`
+- `output/<stem>/<stem>.voice-cleaned.mkv`
+- `output/<stem>/<stem>.voice-cleaned.flac`
+- `output/<stem>/debug/video-voice-cleaner/reports/voice_cleaner_report.json`
+- diagnosticos en `output/<stem>/debug/video-voice-cleaner/work/`
+- muestras opcionales en `output/<stem>/debug/video-voice-cleaner/samples/`
 
 ## Skill
 
@@ -93,7 +92,7 @@ La skill debe recordar que el flujo es independiente: no invoca transcripcion au
 
 ## Validacion
 
-- Parse PowerShell de `src/clean_video_voice.ps1`.
+- Parse PowerShell de `src/video-voice-cleaner/clean_video_voice.ps1`.
 - `py_compile` de modulos Python.
 - Unit tests para:
   - rutas de workspace;

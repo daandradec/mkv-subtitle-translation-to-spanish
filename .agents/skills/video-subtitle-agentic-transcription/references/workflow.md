@@ -5,12 +5,10 @@
 - Use `input/` as the canonical folder.
 - Process only one video per run.
 - Accept any video file with audio that FFmpeg/Whisper can decode. Common examples include MKV, MP4, MOV, M4V, WebM, AVI, WMV, FLV, TS/M2TS, MPEG/MPG, 3GP/3G2, and OGV.
-- Initialize `.venv/` with Python 3.12 using `src/init_python_env.ps1` before running Python modules or transcription executables.
+- Initialize `.venv/` with Python 3.12 using `src/shared/powershell/init_python_env.ps1` before running Python modules or transcription executables.
 - Use `.venv/Scripts` first in PATH so `whisperx` and `whisper` come from the project environment.
-- Create shared workspace directories:
-  - `subtitle_work/<workspace-id>/`
-  - `output/<workspace-id>/`
-- Use the same `24 + "-" + 6` workspace id rule used by translation.
+- Use `output/<stem>/`, where `<stem>` is the exact input filename without extension.
+- A fresh run safely clears that directory and writes helpers under `output/<stem>/debug/video-subtitle-agentic-transcription/`. Random/hash suffixes and custom workspace ids are not supported.
 
 ## 2. Inspect Audio
 
@@ -24,7 +22,7 @@
 ## 3. Extract Audio
 
 - Extract WAV mono 16 kHz with FFmpeg.
-- Keep audio in `subtitle_work/<workspace-id>/`.
+- Keep audio in `output/<stem>/debug/video-subtitle-agentic-transcription/audio/`.
 
 ## 4. Transcribe
 
@@ -32,7 +30,7 @@
 - Fallback to `openai-whisper` installed in `.venv/` if WhisperX is missing.
 - Preserve original spoken language.
 - Do not use translation mode.
-- Keep raw outputs in `subtitle_work/<workspace-id>/whisper/`.
+- Keep raw outputs in `output/<stem>/debug/video-subtitle-agentic-transcription/whisper/`.
 
 ## 5. Postprocess
 
@@ -41,16 +39,23 @@
 - Split long cues into sequential cues inside the same original time range instead of stacking three or more lines.
 - Prefer WhisperX word timestamps for split cue start/end times; if unavailable, distribute timing proportionally inside the original cue.
 - Keep ASS companion subtitles constrained to about 80% of video width by using 10% side margins.
-- Generate simple ASS from SRT.
+- Keep the clean SRT under `output/<stem>/debug/video-subtitle-agentic-transcription/postprocess/`; it is an internal remux input.
+- Do not generate or publish ASS during postprocessing.
 - Write `transcription_report.json`.
 
 ## 6. Remux
 
 - Output must always be an MKV.
-- Use `mkvmerge` directly when it can read the source container.
-- If `mkvmerge` cannot read the source container directly, first create an intermediate MKV with `ffmpeg -map 0 -c copy`, then add the transcription track with `mkvmerge`.
+- Detect the source container with `ffprobe`.
+- For native Matroska/WebM, use `mkvmerge` directly.
+- For MP4/MOV and every other non-Matroska source, map the source and transcription SRT into the final MKV in one FFmpeg invocation. A shared mux operation applies the same automatically calculated timestamp shift to video, audio, and subtitles when edit lists or negative preroll exist.
+- Never remux a non-Matroska source into a source-only intermediate and then add the SRT in a separate command. Separate commands can normalize timestamps differently and create a constant subtitle offset.
+- Do not fix edit-list offsets with a hardcoded subtitle delay or `-ss 0`. Stream-copy trimming at zero can discard video until the next keyframe.
 - Preserve original tracks when the source container allows copy remuxing.
 - Embed the transcribed SRT as default with title `Transcripción <idioma>`.
+- Validate that all embedded cue timestamps differ from their source SRT timestamps by one uniform mux shift (maximum spread 5 ms), and record the strategy and shift in `output/<stem>/debug/video-subtitle-agentic-transcription/reports/remux_validation.json`.
+- By default, publish only `<stem>.transcribed.mkv` in `output/<stem>/`; a fresh run removes obsolete same-stem sidecars before processing.
+- With `--export-ass-file-subtitles`, extract the normalized embedded subtitle track from the completed MKV, convert it to ASS, validate its cue count and timestamps against the embedded packets, and publish it in `output/<stem>/sidecars/`.
 
 ## 7. Handoff
 

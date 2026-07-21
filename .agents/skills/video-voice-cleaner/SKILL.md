@@ -39,9 +39,9 @@ Use subagents in small batches and close them after integrating results.
 2. Select audio with optional `-AudioStreamIndex`; otherwise use default audio, then first audio. The same selection rule applies to every file in batch mode.
 3. Use `conservative` by default unless the user asks for stronger cleanup.
 4. Validate `models/voice-cleaner/std.rnnn`.
-5. Run `src/clean_video_voice.ps1`.
+5. Run the canonical launcher `src/video-voice-cleaner/clean_video_voice.ps1`.
 6. Preserve original audio and mark clean FLAC as default in the output MKV.
-7. Keep generated diagnostics in `subtitle_work/<workspace-id>/voice-cleaner/`.
+7. Use deterministic `output/<stem>/`; keep generated diagnostics in `output/<stem>/debug/video-voice-cleaner/`. A fresh run safely clears the existing output directory.
 8. Report the output MKV and clean FLAC paths. In batch mode, continue after per-file failures and summarize processed/failed items.
 
 ## Guardrails

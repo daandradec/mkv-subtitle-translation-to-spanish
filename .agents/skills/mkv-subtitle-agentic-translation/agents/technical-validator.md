@@ -10,7 +10,7 @@ Spawn after the main agent generates subtitle files and remuxes the final MKV.
 
 ## Inputs
 
-- Final MKV path in `output/<workspace-id>/`.
+- Final MKV path in `output/<stem>/`.
 - Generated subtitle file paths.
 - Expected language/title/default-track policy.
 - Known risky timestamps.
@@ -21,12 +21,14 @@ Spawn after the main agent generates subtitle files and remuxes the final MKV.
 - Extract the Spanish subtitle track from the final MKV and sample readable Spanish.
 - Scan visible text for ASS commands, drawing paths, long numeric sequences, or empty translated tracks.
 - Check known dialogue and song timestamps.
-- Verify `output/<workspace-id>/` contains the final MKV plus generated ASS/SRT deliverables and no required artifact is missing.
-- If checking a media player UI for `[Local]` entries, open or copy only the MKV because ASS/SRT sidecars in the same output folder may be auto-detected as local external subtitles.
+- Verify the final MKV is the only file at the root of `output/<stem>/` and generated ASS/SRT helpers exist only under `debug/mkv-subtitle-agentic-translation/subtitles/generated/`.
+- Verify the first subtitle track is the generated Spanish translation and it is the only default subtitle track. When both formats exist, expect the ASS translation first/default and the TV-safe SRT second/non-default, followed by all original subtitle tracks as non-default.
+- Check the player UI for unexpected `[Local]` entries; none should be discoverable from the output root because this workflow does not publish sidecars.
+- Read `debug/mkv-subtitle-agentic-translation/reports/remux_validation_report.json` and reject the output unless its status is `pass`.
 
 ## Output Contract
 
-Return `validation_report.md` with:
+Return `debug/mkv-subtitle-agentic-translation/reports/validation_report.md` with:
 
 - pass/fail status;
 - exact failed file paths and timestamps;

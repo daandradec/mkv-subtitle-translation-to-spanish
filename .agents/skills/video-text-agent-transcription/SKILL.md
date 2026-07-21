@@ -22,11 +22,11 @@ Use this skill to create text transcripts, not subtitle MKVs. Keep it independen
 5. Run the deterministic script:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\src\transcribe_video_text.ps1 -InputPath "<path>"
+powershell -ExecutionPolicy Bypass -File .\src\video-text-agent-transcription\transcribe_video_text.ps1 -InputPath "<path>"
 ```
 
 6. For batch folder input, let the script process videos non-recursively and continue after individual failures.
-7. Validate that each successful video has a unique `output/<workspace-id>/` folder with native backend files and `<videoname>.md`.
+7. Validate that each successful video publishes only `<videoname>.srt` and `<videoname>.md` beside `debug/`. Keep native and auxiliary text formats under `output/<stem>/debug/video-text-agent-transcription/whisper/`. Folder mode rejects duplicate filename stems before processing.
 
 Language probe command:
 
@@ -47,7 +47,7 @@ Treat confidence below `0.60` or disagreement among samples as uncertain, but al
 Prefer defaults unless the user asks for a specific tradeoff:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\src\transcribe_video_text.ps1 `
+powershell -ExecutionPolicy Bypass -File .\src\video-text-agent-transcription\transcribe_video_text.ps1 `
   -InputPath ".\input\video.mp4" `
   -Backend auto `
   -WhisperXModel large-v3 `
@@ -60,7 +60,7 @@ powershell -ExecutionPolicy Bypass -File .\src\transcribe_video_text.ps1 `
 For maximum WhisperX decoding quality with literal outputs, use:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\src\transcribe_video_text.ps1 `
+powershell -ExecutionPolicy Bypass -File .\src\video-text-agent-transcription\transcribe_video_text.ps1 `
   -InputPath ".\input\video.mp4" `
   -Language es `
   -WhisperXQuality maximum `
@@ -75,8 +75,6 @@ powershell -ExecutionPolicy Bypass -File .\src\transcribe_video_text.ps1 `
 - `-WhisperXInitialPrompt` and `-WhisperXHotwords`: optional, curated context and vocabulary; do not derive them blindly from a noisy transcript.
 - `-Verbatim`: preserve recognized words, repetitions, fillers, and noise labels while only repairing encoding and whitespace.
 - `-AudioStreamIndex`: optional. `-1` means audio default, then first audio.
-- `-WorkspaceId`: optional and only for a single video.
-- `-Force`: only when intentionally reusing a provided workspace.
 - `-DryRun`: inspect planned commands without transcribing.
 
 ## Output Contract
@@ -84,22 +82,25 @@ powershell -ExecutionPolicy Bypass -File .\src\transcribe_video_text.ps1 `
 For each processed video, expect:
 
 ```text
-output/<workspace-id>/<videoname>.json
-output/<workspace-id>/<videoname>.srt
-output/<workspace-id>/<videoname>.vtt
-output/<workspace-id>/<videoname>.txt
-output/<workspace-id>/<videoname>.tsv
-output/<workspace-id>/<videoname>.md
-output/<workspace-id>/text_transcription_report.json
+output/<stem>/<videoname>.srt
+output/<stem>/<videoname>.md
+output/<stem>/debug/video-text-agent-transcription/whisper/raw/<videoname>.json
+output/<stem>/debug/video-text-agent-transcription/whisper/raw/<videoname>.srt
+output/<stem>/debug/video-text-agent-transcription/whisper/raw/<videoname>.vtt
+output/<stem>/debug/video-text-agent-transcription/whisper/raw/<videoname>.txt
+output/<stem>/debug/video-text-agent-transcription/whisper/raw/<videoname>.tsv
+output/<stem>/debug/video-text-agent-transcription/whisper/postprocess/<videoname>.vtt
+output/<stem>/debug/video-text-agent-transcription/whisper/postprocess/<videoname>.txt
+output/<stem>/debug/video-text-agent-transcription/reports/text_transcription_report.json
 ```
 
-JSON/TSV stay close to backend output. SRT, VTT, TXT, Markdown, and report are required for a successful run and should contain postprocessed clean text.
+SRT and Markdown are the only public files. Raw backend formats stay under `whisper/raw/`; clean VTT/TXT remain available under `whisper/postprocess/` for diagnostics or alternate consumption. Every fresh run clears `output/<stem>/` first.
 
 ## Quality Rules
 
 - Preserve the original spoken language; do not translate.
 - Optimize Markdown for knowledge retrieval: use one time-ranged heading per paragraph, readable paragraphs, and clean UTF-8.
-- Apply the same conservative text cleanup to canonical SRT, VTT, and TXT outputs.
+- Apply the same conservative text cleanup to the public SRT and debug VTT/TXT outputs.
 - Remove nonverbal noise, empty greetings, excessive filler, repeated boilerplate, sponsorship-like clutter, and duplicate fragments.
 - Treat backend language detection as a hint, not absolute truth; trust the postprocess report when text evidence corrects a mismatch.
 - Preserve concepts, methods, examples, design decisions, best practices, domain vocabulary, and any substantive topic.

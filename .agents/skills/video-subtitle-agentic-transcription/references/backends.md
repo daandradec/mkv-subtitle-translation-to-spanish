@@ -31,7 +31,7 @@ WhisperX no esta disponible en `.venv`; se uso openai-whisper desde el entorno l
 ## Constraints
 
 - Do not install dependencies globally.
-- Use `requirements.txt` through `src/init_python_env.ps1` for required local dependencies.
+- Use `requirements.txt` through `src/shared/powershell/init_python_env.ps1` for required local dependencies.
 - Use `requirements-whisperx.txt` for the preferred WhisperX backend; fallback to openai-whisper remains valid if WhisperX installation fails.
 - Do not require API keys.
 - Do not use diarization in v1.

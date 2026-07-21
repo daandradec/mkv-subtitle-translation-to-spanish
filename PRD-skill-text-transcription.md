@@ -2,7 +2,7 @@
 
 ## Resumen
 
-Crear una skill local independiente para transcribir videos a texto con WhisperX como backend preferido y OpenAI Whisper como fallback local. La skill procesa un archivo de video o todos los videos de una carpeta, conserva JSON/TSV cercanos al backend y genera SRT/VTT/TXT/Markdown limpios por video para uso futuro como base de conocimiento o RAG.
+Crear una skill local independiente para transcribir videos a texto con WhisperX como backend preferido y OpenAI Whisper como fallback local. La skill procesa un archivo de video o todos los videos de una carpeta, publica sólo SRT/Markdown y conserva los demás formatos bajo debug para trazabilidad.
 
 Este flujo no genera subtitulos incrustados, no remuxea el video y no traduce. Su objetivo es producir transcripciones textuales de alta calidad, velocidad y trazabilidad.
 
@@ -10,9 +10,9 @@ Este flujo no genera subtitulos incrustados, no remuxea el video y no traduce. S
 
 - Procesar un video individual en `input/<video>` o una carpeta como `input/`.
 - Usar WhisperX cuando este disponible; usar Whisper si WhisperX no esta disponible.
-- Crear salidas por video en `output/<prefijo-24>-<codigo-6>/`.
+- Crear salidas deterministas por video en `output/<stem>/`, sin hash ni sufijo aleatorio.
 - Mantener `json` y `tsv` como artefactos cercanos al backend cuando existan.
-- Generar `.srt`, `.vtt`, `.txt` y `<videoname>.md` canonicos con transcripcion limpia, manteniendo tiempos en subtitulos y Markdown estructurado por rangos de tiempo.
+- Publicar únicamente `.srt` y `<videoname>.md` canónicos con transcripción limpia; conservar VTT/TXT limpios como auxiliares de debug.
 - Aplicar limpieza general y especifica por idioma detectado cuando existan reglas disponibles.
 
 ## No Objetivos
@@ -25,20 +25,20 @@ Este flujo no genera subtitulos incrustados, no remuxea el video y no traduce. S
 ## Flujo
 
 1. Validar que existan `ffmpeg` y `ffprobe`.
-2. Inicializar `.venv` con Python 3.12 usando `src/init_python_env.ps1`.
+2. Inicializar `.venv` con Python 3.12 usando `src/shared/powershell/init_python_env.ps1`.
 3. Resolver entrada:
    - archivo: procesa ese video;
    - carpeta: procesa videos validos no recursivamente y por orden de nombre;
    - sin parametro: procesa solo si hay exactamente un video valido en `input/`.
 4. Para cada video:
    - seleccionar audio por `-AudioStreamIndex`, default del contenedor o primera pista;
-   - crear workspace unico con formato `24 + "-" + 6`;
-   - extraer WAV mono 16 kHz a `subtitle_work/<workspace-id>/text-transcription/`;
+   - limpiar de forma segura y crear `output/<stem>/`;
+   - extraer WAV mono 16 kHz a `output/<stem>/debug/video-text-agent-transcription/audio/`;
    - ejecutar WhisperX o Whisper con `--output_format all`;
-   - normalizar nombres de archivos nativos a `<videoname>.*`;
-   - reescribir `.srt`, `.vtt` y `.txt` canonicos con texto postprocesado;
-   - leer JSON/SRT/VTT/TXT y generar `<videoname>.md`;
-   - escribir `text_transcription_report.json`.
+   - conservar todos los formatos nativos en `output/<stem>/debug/video-text-agent-transcription/whisper/raw/`;
+   - publicar el SRT limpio y generar VTT/TXT limpios en `whisper/postprocess/`;
+   - leer los artefactos Whisper y generar `<videoname>.md`;
+   - escribir `text_transcription_report.json` bajo `debug/video-text-agent-transcription/reports/`.
 5. En batch, continuar con los demas videos si uno falla y reportar fallos al final.
 
 ## Interfaz
@@ -53,7 +53,7 @@ $video-text-agent-transcription "input/"
 Script:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\src\transcribe_video_text.ps1 `
+powershell -ExecutionPolicy Bypass -File .\src\video-text-agent-transcription\transcribe_video_text.ps1 `
   -InputPath ".\input\video.mp4" `
   -Backend auto `
   -WhisperXModel large-v3 `
@@ -69,8 +69,6 @@ Parametros:
 - `-Backend`: `auto`, `whisperx` o `whisper`.
 - `-Language`: opcional; si falta, WhisperX/Whisper autodetecta.
 - `-AudioStreamIndex`: opcional; `-1` usa default o primera pista.
-- `-WorkspaceId`: opcional y solo para un video.
-- `-Force`: permite reutilizar un `WorkspaceId` existente.
 - `-DryRun`: muestra comandos sin transcribir.
 
 ## Markdown para RAG
@@ -89,7 +87,7 @@ El Markdown generado debe:
 - `python -m py_compile` de los modulos nuevos.
 - Parse del PowerShell principal.
 - Tests unitarios para:
-  - workspace unico;
+  - nombre de salida determinista y limpieza segura;
   - postproceso Markdown desde JSON;
   - limpieza de boilerplate, relleno y caracteres danados;
   - fallback de backend;

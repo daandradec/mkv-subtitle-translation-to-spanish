@@ -11,8 +11,8 @@
 
 ## Script Checks
 
-- Parse `src/clean_video_voice.ps1`.
-- `python -m py_compile src/*.py`.
+- Parse `src/video-voice-cleaner/clean_video_voice.ps1`.
+- Compile Python sources under `src/shared/python/` and `src/video-voice-cleaner/python/`.
 - Run `-DryRun` on one real video.
 
 ## Manual Validation

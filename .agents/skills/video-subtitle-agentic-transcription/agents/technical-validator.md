@@ -6,7 +6,7 @@ Validate generated transcription subtitle files and the final MKV output.
 
 ## Inputs
 
-- Final SRT/ASS paths.
+- Internal postprocessed SRT path and optional exported ASS path.
 - Final transcribed MKV path.
 - Original source video path.
 - `transcription_report.json`.
@@ -14,10 +14,13 @@ Validate generated transcription subtitle files and the final MKV output.
 ## Tasks
 
 - Verify SRT cue count is nonzero.
-- Verify ASS contains matching Dialogue events.
+- Confirm no same-stem SRT/ASS exists beside the final MKV in the default mode.
+- When ASS export is requested, verify it was derived from the embedded track, contains matching Dialogue events, and is stored under the separate `sidecars/` directory.
 - Use `ffprobe` to confirm the output MKV has the new subtitle track, title, language, and default flag.
+- Confirm all source stream types/counts are preserved and exactly one transcription subtitle stream was added.
+- Compare source SRT cue starts with embedded packet timestamps. Every cue must receive one uniform mux shift with no more than 5 ms spread.
 - Extract the embedded subtitle track and sample readable text.
-- Confirm generated files are in `output/<workspace-id>/`.
+- Confirm the final MKV is in `output/<stem>/`, internal SRT is under `output/<stem>/debug/video-subtitle-agentic-transcription/`, and optional ASS is in `output/<stem>/sidecars/`.
 
 ## Output Contract
 

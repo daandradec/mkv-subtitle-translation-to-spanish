@@ -1,6 +1,6 @@
 # Markdown Format
 
-The Markdown is designed for future RAG ingestion and human review. Canonical SRT, VTT, and TXT outputs use the same cleaned transcript text.
+The Markdown is designed for future RAG ingestion and human review. The public SRT and debug-only VTT/TXT outputs use the same cleaned transcript text.
 
 Required structure:
 

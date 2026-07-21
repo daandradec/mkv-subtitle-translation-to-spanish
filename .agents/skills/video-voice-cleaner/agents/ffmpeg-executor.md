@@ -14,12 +14,12 @@ Run the local voice cleaning pipeline.
 
 ## Tasks
 
-- Run `src/clean_video_voice.ps1`.
+- Run `src/video-voice-cleaner/clean_video_voice.ps1`.
 - Use FFmpeg/FFprobe/MKVToolNix from PATH.
 - Keep video copied whenever possible.
 - Write clean FLAC and remux MKV.
 - Preserve original audio as non-default.
-- Keep logs under `subtitle_work/<workspace-id>/voice-cleaner/`.
+- Keep logs under `output/<stem>/debug/video-voice-cleaner/`.
 
 ## Output Contract
 

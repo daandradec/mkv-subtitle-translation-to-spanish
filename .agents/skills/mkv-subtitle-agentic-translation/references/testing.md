@@ -29,10 +29,12 @@ Include small synthetic fixtures rather than real copyrighted subtitles:
 For generated MKV files:
 
 - `ffprobe` shows Spanish subtitle language `spa`.
-- Spanish track is default when requested.
+- The generated Spanish subtitle is the first subtitle track and the only default track.
+- With both formats, translated ASS precedes the non-default TV-safe SRT, and both precede every original subtitle track.
 - Extracted Spanish subtitle track contains readable Spanish.
 - No generated visible line matches ASS command patterns or long numeric paths.
 - Known song timestamps do not render garbage text.
+- The output root contains only the final MKV as a file; generated ASS/SRT helpers remain under `debug/mkv-subtitle-agentic-translation/subtitles/`.
 
 ## Manual QA
 

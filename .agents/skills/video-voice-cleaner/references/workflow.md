@@ -7,10 +7,8 @@
 - Process all valid videos non-recursively when a folder path is provided.
 - Without explicit input, keep strict autodetection: process only when `input/` contains exactly one valid video.
 - Accept any video file with audio that FFmpeg can decode.
-- Create shared workspace directories:
-  - `subtitle_work/<workspace-id>/voice-cleaner/`
-  - `output/<workspace-id>/`
-- In batch mode, create one independent workspace per video and continue with remaining videos if one fails.
+- Use deterministic `output/<stem>/` and keep helpers under `output/<stem>/debug/video-voice-cleaner/`.
+- A fresh run safely clears the corresponding output directory. In batch mode, reject duplicate filename stems before processing and continue with remaining videos if an individual run fails.
 
 ## 2. Inspect Audio
 

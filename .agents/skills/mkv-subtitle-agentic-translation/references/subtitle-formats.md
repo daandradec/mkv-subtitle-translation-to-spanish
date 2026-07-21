@@ -23,6 +23,8 @@ Use SRT for TV-safe output when styling is less important than compatibility. It
 - Desktop/fidelity output: MKV with translated ASS or simplified ASS.
 - TV-safe output: SRT or plain ASS with no karaoke effects, drawing commands, or per-character events.
 - If the source subtitle has complex songs/signs, generate both when feasible.
+- Keep generated subtitle files internal under the skill debug directory; publish only the remuxed MKV.
+- When both variants are embedded, put the translated ASS first and make it default. Keep the TV-safe SRT second as a non-default compatibility fallback.
 
 ## Unsafe Text Patterns
 
