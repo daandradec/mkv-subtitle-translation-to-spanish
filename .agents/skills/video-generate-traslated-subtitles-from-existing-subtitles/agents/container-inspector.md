@@ -10,13 +10,13 @@ Spawn this subagent before extraction or translation, especially when the source
 
 ## Inputs
 
-- Source MKV path in `/input`.
+- Source MKV path in `/inputs`.
 - Available tool commands or paths for `ffprobe`, `ffmpeg`, and `mkvmerge`.
 
 ## Tasks
 
-- Verify `/input` contains at least one MKV, or that the user-provided MKV path/name exists.
-- If multiple MKVs are present in `/input`, require the main agent to provide exactly one selected input for this run; never choose silently.
+- Verify `/inputs` contains at least one MKV, or that the user-provided MKV path/name exists.
+- If multiple MKVs are present in `/inputs`, require the main agent to provide exactly one selected input for this run; never choose silently.
 - Run `ffprobe` or equivalent inspection.
 - List video, audio, subtitle, attachment, and chapter streams.
 - Detect subtitle languages, codecs, default flags, titles, and durations.

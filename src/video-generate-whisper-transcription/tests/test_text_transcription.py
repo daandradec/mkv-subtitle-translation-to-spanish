@@ -10,19 +10,19 @@ from video_generate_whisper_transcription.workspace import build_text_transcript
 class TextTranscriptionTests(unittest.TestCase):
     def test_workspace_uses_existing_pattern_and_outputs_markdown(self):
         workspace = build_text_transcription_workspace(
-            "input/capacitacion ma.mp4",
+            "inputs/capacitacion ma.mp4",
         )
         self.assertEqual(workspace["output_name"], "capacitacion ma")
-        self.assertIn("output/capacitacion ma/capacitacion ma.md", workspace["markdown"].replace("\\", "/"))
-        self.assertIn("output/capacitacion ma/debug/video-generate-whisper-transcription/audio", workspace["audio_wav"].replace("\\", "/"))
-        self.assertIn("output/capacitacion ma/debug/video-generate-whisper-transcription/whisper/raw", workspace["json"].replace("\\", "/"))
-        self.assertIn("output/capacitacion ma/debug/video-generate-whisper-transcription/whisper/postprocess", workspace["vtt"].replace("\\", "/"))
+        self.assertIn("outputs/capacitacion ma/capacitacion ma.md", workspace["markdown"].replace("\\", "/"))
+        self.assertIn("outputs/capacitacion ma/debug/video-generate-whisper-transcription/audio", workspace["audio_wav"].replace("\\", "/"))
+        self.assertIn("outputs/capacitacion ma/debug/video-generate-whisper-transcription/whisper/raw", workspace["json"].replace("\\", "/"))
+        self.assertIn("outputs/capacitacion ma/debug/video-generate-whisper-transcription/whisper/postprocess", workspace["vtt"].replace("\\", "/"))
 
     def test_workspace_reuses_deterministic_folder_name_when_it_exists(self):
         with tempfile.TemporaryDirectory() as tmp:
             output_root = Path(tmp) / "output"
             (output_root / "video").mkdir(parents=True)
-            workspace = build_text_transcription_workspace("input/video.mp4", output_root=output_root)
+            workspace = build_text_transcription_workspace("inputs/video.mp4", output_root=output_root)
         self.assertEqual(workspace["output_name"], "video")
 
     def test_clean_segment_removes_boilerplate_and_repairs_spanish_question_mark(self):
@@ -83,7 +83,7 @@ class TextTranscriptionTests(unittest.TestCase):
                 video_stem="video",
                 markdown_path=output_dir / "video.md",
                 report_path=report_path,
-                source_video="input/video.mp4",
+                source_video="inputs/video.mp4",
                 backend="whisperx",
                 section_seconds=180,
             )
@@ -134,7 +134,7 @@ class TextTranscriptionTests(unittest.TestCase):
                 video_stem="video",
                 markdown_path=output_dir / "video.md",
                 report_path=output_dir / "text_transcription_report.json",
-                source_video="input/video.mp4",
+                source_video="inputs/video.mp4",
                 backend="whisperx",
             )
             self.assertEqual(report["detected_language"], "es")
@@ -157,7 +157,7 @@ class TextTranscriptionTests(unittest.TestCase):
                 video_stem="video",
                 markdown_path=output_dir / "video.md",
                 report_path=output_dir / "text_transcription_report.json",
-                source_video="input/video.mp4",
+                source_video="inputs/video.mp4",
                 backend="whisperx",
                 verbatim=True,
                 backend_settings={"quality_profile": "maximum", "beam_size": 10},

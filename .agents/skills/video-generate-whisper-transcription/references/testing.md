@@ -3,9 +3,9 @@
 Before finishing script changes, run:
 
 ```powershell
-$env:PYTHONPATH = ".\src\shared\python;.\src\video-generate-whisper-transcription\python"
+$env:PYTHONPATH = ".\src\shared;.\src\video-generate-whisper-transcription\python"
 .\.venv\Scripts\python.exe -m unittest discover -s .\src\video-generate-whisper-transcription\tests -p "test_*.py"
-powershell -ExecutionPolicy Bypass -File .\src\shared\powershell\run_tests.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\manage_video_toolkit.ps1 run-test-suite
 ```
 
 Also parse the PowerShell script:

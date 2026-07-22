@@ -26,4 +26,3 @@ def read_detected_language(raw_json_path, requested_language=""):
         except json.JSONDecodeError:
             return ""
     return ""
-

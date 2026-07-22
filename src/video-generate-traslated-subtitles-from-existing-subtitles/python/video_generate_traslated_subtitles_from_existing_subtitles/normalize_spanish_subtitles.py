@@ -2,7 +2,6 @@
 import argparse
 import json
 import re
-import tempfile
 from collections import Counter
 from pathlib import Path
 
@@ -14,6 +13,7 @@ from video_generate_traslated_subtitles_from_existing_subtitles.ass_to_tv_safe_s
     parse_dialogue,
     strip_ass_text,
 )
+from video_toolkit.temp_paths import managed_temporary_directory
 
 
 WORD_REPLACEMENTS = [
@@ -710,7 +710,7 @@ def main():
     output_srt = Path(args.output_srt)
     report_path = Path(args.report)
 
-    with tempfile.TemporaryDirectory(prefix="subtitle_normalize_") as temp_dir:
+    with managed_temporary_directory(prefix="subtitle_normalize_") as temp_dir:
         temp = Path(temp_dir)
         temp_ass = temp / "normalized.ass"
         temp_srt = temp / "normalized.srt"

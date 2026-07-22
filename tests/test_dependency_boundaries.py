@@ -3,7 +3,8 @@ import unittest
 from pathlib import Path
 
 
-SRC_DIR = Path(__file__).resolve().parents[2]
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+SRC_DIR = PROJECT_ROOT / "src"
 SKILL_PACKAGES = {
     "video-generate-traslated-subtitles-from-existing-subtitles": "video_generate_traslated_subtitles_from_existing_subtitles",
     "video-generate-new-subtitles-from-audio": "video_generate_new_subtitles_from_audio",
@@ -46,7 +47,7 @@ def imports_package(module_name, package_name):
 class DependencyBoundaryTests(unittest.TestCase):
     def test_shared_python_does_not_import_skill_packages(self):
         skill_packages = tuple(SKILL_PACKAGES.values())
-        for path in (SRC_DIR / "shared" / "python").rglob("*.py"):
+        for path in (SRC_DIR / "shared").rglob("*.py"):
             for module_name in imported_modules(path):
                 with self.subTest(path=path, module=module_name):
                     self.assertFalse(
@@ -66,7 +67,7 @@ class DependencyBoundaryTests(unittest.TestCase):
                         )
 
     def test_canonical_packages_do_not_import_flat_compatibility_modules(self):
-        roots = [SRC_DIR / "shared" / "python"]
+        roots = [SRC_DIR / "shared"]
         roots.extend(SRC_DIR / skill_dir / "python" for skill_dir in SKILL_PACKAGES)
         for root in roots:
             for path in root.rglob("*.py"):

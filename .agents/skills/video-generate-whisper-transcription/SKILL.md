@@ -1,6 +1,6 @@
 ---
 name: video-generate-whisper-transcription
-description: Agentic workflow for detecting and confirming spoken language, then transcribing one video or a folder into native WhisperX/Whisper outputs plus clean RAG-ready Markdown. Use when Codex needs high-quality text transcripts from video/audio files, batch text transcription from input/, language-confirmed WhisperX transcription, Markdown knowledge-base preparation, Whisper fallback, or transcript cleanup without creating MKV subtitles.
+description: Agentic workflow for detecting and confirming spoken language, then transcribing one video or a folder into native WhisperX/Whisper outputs plus clean RAG-ready Markdown. Use when Codex needs high-quality text transcripts from video/audio files, batch text transcription from inputs/, language-confirmed WhisperX transcription, Markdown knowledge-base preparation, Whisper fallback, or transcript cleanup without creating MKV subtitles.
 ---
 
 # Video Generate Whisper Transcription
@@ -9,8 +9,8 @@ description: Agentic workflow for detecting and confirming spoken language, then
 
 Use this skill to create text transcripts, not subtitle MKVs. Keep it independent from `video-generate-new-subtitles-from-audio`.
 
-1. Inspect the requested input. Accept a single video file or a folder. If no path is provided, use `input/` only when it contains exactly one valid video with audio.
-2. Initialize the project `.venv`, then establish the spoken language before the definitive transcription:
+1. Inspect the requested input. Accept a single video file or a folder. If no path is provided, use `inputs/` only when it contains exactly one valid video with audio.
+2. Initialize the project `.venv`; keep ephemeral processing files under `.tmp/` and reusable Whisper/WhisperX downloads under `.cache/models/`. Then establish the spoken language before the definitive transcription:
    - If the user already supplied a language, treat it as proposed but still ask for confirmation.
    - Otherwise run `scripts/detect_language.py` for each input using the same Whisper model/device planned for transcription.
    - Read `references/whisper-languages.md`, show the detected/proposed code and Spanish name, then provide the complete available-language list.
@@ -26,14 +26,14 @@ powershell -ExecutionPolicy Bypass -File .\src\video-generate-whisper-transcript
 ```
 
 6. For batch folder input, let the script process videos non-recursively and continue after individual failures.
-7. Validate that each successful video publishes only `<videoname>.srt` and `<videoname>.md` beside `debug/`. Keep native and auxiliary text formats under `output/<stem>/debug/video-generate-whisper-transcription/whisper/`. Folder mode rejects duplicate filename stems before processing.
+7. Validate that each successful video publishes only `<videoname>.srt` and `<videoname>.md` beside `debug/`. Keep native and auxiliary text formats under `outputs/<stem>/debug/video-generate-whisper-transcription/whisper/`. Folder mode rejects duplicate filename stems before processing.
 
 Language probe command:
 
 ```powershell
 .\.venv\Scripts\python.exe `
   .\.agents\skills\video-generate-whisper-transcription\scripts\detect_language.py `
-  --input ".\input\video.mp4" `
+  --input ".\inputs\video.mp4" `
   --model large-v3 `
   --device cuda `
   --compute-type float16 `
@@ -48,7 +48,7 @@ Prefer defaults unless the user asks for a specific tradeoff:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\src\video-generate-whisper-transcription\transcribe_video_text.ps1 `
-  -InputPath ".\input\video.mp4" `
+  -InputPath ".\inputs\video.mp4" `
   -Backend auto `
   -WhisperXModel large-v3 `
   -WhisperModel turbo `
@@ -61,7 +61,7 @@ For maximum WhisperX decoding quality with literal outputs, use:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\src\video-generate-whisper-transcription\transcribe_video_text.ps1 `
-  -InputPath ".\input\video.mp4" `
+  -InputPath ".\inputs\video.mp4" `
   -Language es `
   -WhisperXQuality maximum `
   -WhisperXInitialPrompt "Short domain context" `
@@ -82,19 +82,19 @@ powershell -ExecutionPolicy Bypass -File .\src\video-generate-whisper-transcript
 For each processed video, expect:
 
 ```text
-output/<stem>/<videoname>.srt
-output/<stem>/<videoname>.md
-output/<stem>/debug/video-generate-whisper-transcription/whisper/raw/<videoname>.json
-output/<stem>/debug/video-generate-whisper-transcription/whisper/raw/<videoname>.srt
-output/<stem>/debug/video-generate-whisper-transcription/whisper/raw/<videoname>.vtt
-output/<stem>/debug/video-generate-whisper-transcription/whisper/raw/<videoname>.txt
-output/<stem>/debug/video-generate-whisper-transcription/whisper/raw/<videoname>.tsv
-output/<stem>/debug/video-generate-whisper-transcription/whisper/postprocess/<videoname>.vtt
-output/<stem>/debug/video-generate-whisper-transcription/whisper/postprocess/<videoname>.txt
-output/<stem>/debug/video-generate-whisper-transcription/reports/text_transcription_report.json
+outputs/<stem>/<videoname>.srt
+outputs/<stem>/<videoname>.md
+outputs/<stem>/debug/video-generate-whisper-transcription/whisper/raw/<videoname>.json
+outputs/<stem>/debug/video-generate-whisper-transcription/whisper/raw/<videoname>.srt
+outputs/<stem>/debug/video-generate-whisper-transcription/whisper/raw/<videoname>.vtt
+outputs/<stem>/debug/video-generate-whisper-transcription/whisper/raw/<videoname>.txt
+outputs/<stem>/debug/video-generate-whisper-transcription/whisper/raw/<videoname>.tsv
+outputs/<stem>/debug/video-generate-whisper-transcription/whisper/postprocess/<videoname>.vtt
+outputs/<stem>/debug/video-generate-whisper-transcription/whisper/postprocess/<videoname>.txt
+outputs/<stem>/debug/video-generate-whisper-transcription/reports/text_transcription_report.json
 ```
 
-SRT and Markdown are the only public files. Raw backend formats stay under `whisper/raw/`; clean VTT/TXT remain available under `whisper/postprocess/` for diagnostics or alternate consumption. Every fresh run clears `output/<stem>/` first.
+SRT and Markdown are the only public files. Raw backend formats stay under `whisper/raw/`; clean VTT/TXT remain available under `whisper/postprocess/` for diagnostics or alternate consumption. Every fresh run clears `outputs/<stem>/` first.
 
 ## Quality Rules
 

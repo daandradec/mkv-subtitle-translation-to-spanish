@@ -9,6 +9,10 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 
+PROJECT_ROOT = Path(__file__).resolve().parents[4]
+TEMPORARY_ROOT = PROJECT_ROOT / ".tmp" / "runtime" / "video-generate-whisper-transcription"
+
+
 def run_json_command(command):
     completed = subprocess.run(command, check=True, capture_output=True, text=True, encoding="utf-8")
     return json.loads(completed.stdout)
@@ -119,7 +123,8 @@ def detect_language(args):
     model = WhisperModel(args.model, device=args.device, compute_type=args.compute_type)
     samples = []
 
-    with tempfile.TemporaryDirectory(prefix="whisper-language-probe-") as temp_dir:
+    TEMPORARY_ROOT.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix="whisper-language-probe-", dir=TEMPORARY_ROOT) as temp_dir:
         temp_root = Path(temp_dir)
         for index, offset in enumerate(offsets, start=1):
             probe_path = temp_root / f"probe-{index}.wav"

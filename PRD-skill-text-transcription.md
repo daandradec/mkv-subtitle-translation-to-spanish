@@ -8,9 +8,9 @@ Este flujo no genera subtitulos incrustados, no remuxea el video y no traduce. S
 
 ## Objetivos
 
-- Procesar un video individual en `input/<video>` o una carpeta como `input/`.
+- Procesar un video individual en `inputs/<video>` o una carpeta como `inputs/`.
 - Usar WhisperX cuando este disponible; usar Whisper si WhisperX no esta disponible.
-- Crear salidas deterministas por video en `output/<stem>/`, sin hash ni sufijo aleatorio.
+- Crear salidas deterministas por video en `outputs/<stem>/`, sin hash ni sufijo aleatorio.
 - Mantener `json` y `tsv` como artefactos cercanos al backend cuando existan.
 - Publicar únicamente `.srt` y `<videoname>.md` canónicos con transcripción limpia; conservar VTT/TXT limpios como auxiliares de debug.
 - Aplicar limpieza general y especifica por idioma detectado cuando existan reglas disponibles.
@@ -25,17 +25,17 @@ Este flujo no genera subtitulos incrustados, no remuxea el video y no traduce. S
 ## Flujo
 
 1. Validar que existan `ffmpeg` y `ffprobe`.
-2. Inicializar `.venv` con Python 3.12 usando `src/shared/powershell/init_python_env.ps1`.
+2. Inicializar `.venv` con Python 3.12 usando `scripts/manage_video_toolkit.ps1 setup-python-environment` o `scripts/manage_video_toolkit.sh setup-python-environment`.
 3. Resolver entrada:
    - archivo: procesa ese video;
    - carpeta: procesa videos validos no recursivamente y por orden de nombre;
-   - sin parametro: procesa solo si hay exactamente un video valido en `input/`.
+   - sin parametro: procesa solo si hay exactamente un video valido en `inputs/`.
 4. Para cada video:
    - seleccionar audio por `-AudioStreamIndex`, default del contenedor o primera pista;
-   - limpiar de forma segura y crear `output/<stem>/`;
-   - extraer WAV mono 16 kHz a `output/<stem>/debug/video-generate-whisper-transcription/audio/`;
+   - limpiar de forma segura y crear `outputs/<stem>/`;
+   - extraer WAV mono 16 kHz a `outputs/<stem>/debug/video-generate-whisper-transcription/audio/`;
    - ejecutar WhisperX o Whisper con `--output_format all`;
-   - conservar todos los formatos nativos en `output/<stem>/debug/video-generate-whisper-transcription/whisper/raw/`;
+   - conservar todos los formatos nativos en `outputs/<stem>/debug/video-generate-whisper-transcription/whisper/raw/`;
    - publicar el SRT limpio y generar VTT/TXT limpios en `whisper/postprocess/`;
    - leer los artefactos Whisper y generar `<videoname>.md`;
    - escribir `text_transcription_report.json` bajo `debug/video-generate-whisper-transcription/reports/`.
@@ -46,15 +46,15 @@ Este flujo no genera subtitulos incrustados, no remuxea el video y no traduce. S
 Skill:
 
 ```text
-$video-generate-whisper-transcription "input/video.mp4"
-$video-generate-whisper-transcription "input/"
+$video-generate-whisper-transcription "inputs/video.mp4"
+$video-generate-whisper-transcription "inputs/"
 ```
 
 Script:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\src\video-generate-whisper-transcription\transcribe_video_text.ps1 `
-  -InputPath ".\input\video.mp4" `
+  -InputPath ".\inputs\video.mp4" `
   -Backend auto `
   -WhisperXModel large-v3 `
   -WhisperModel turbo `
@@ -65,7 +65,7 @@ powershell -ExecutionPolicy Bypass -File .\src\video-generate-whisper-transcript
 
 Parametros:
 
-- `-InputPath`: archivo o carpeta. Si falta, usa autodeteccion estricta en `input/`.
+- `-InputPath`: archivo o carpeta. Si falta, usa autodeteccion estricta en `inputs/`.
 - `-Backend`: `auto`, `whisperx` o `whisper`.
 - `-Language`: opcional; si falta, WhisperX/Whisper autodetecta.
 - `-AudioStreamIndex`: opcional; `-1` usa default o primera pista.

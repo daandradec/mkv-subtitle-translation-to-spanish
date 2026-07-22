@@ -6,7 +6,7 @@ from pathlib import Path
 from video_toolkit.workspace_ids import output_folder_name
 
 
-def build_text_transcription_workspace(input_video, output_root="output"):
+def build_text_transcription_workspace(input_video, output_root="outputs"):
     output_name = output_folder_name(input_video)
     stem = Path(input_video).stem
     output_dir = Path(output_root) / output_name
@@ -39,7 +39,7 @@ def build_text_transcription_workspace(input_video, output_root="output"):
 def main():
     parser = argparse.ArgumentParser(description="Create per-video text transcription workspace paths.")
     parser.add_argument("--input-video", required=True)
-    parser.add_argument("--output-root", default="output")
+    parser.add_argument("--output-root", default="outputs")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
 

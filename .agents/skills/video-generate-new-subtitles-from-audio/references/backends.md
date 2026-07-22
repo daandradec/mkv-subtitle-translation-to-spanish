@@ -22,6 +22,8 @@ Default command shape:
 whisper "<audio.wav>" --model turbo --task transcribe --device cuda --fp16 True --output_dir "<workdir>" --output_format all
 ```
 
+The managed launcher also passes `--model_dir` using `.cache/models/whisper/`. Keep downloaded model weights there so they survive temporary cleanup without becoming user output or a root `dist/` artifact.
+
 When fallback is used, report:
 
 ```text
@@ -31,7 +33,7 @@ WhisperX no esta disponible en `.venv`; se uso openai-whisper desde el entorno l
 ## Constraints
 
 - Do not install dependencies globally.
-- Use `requirements.txt` through `src/shared/powershell/init_python_env.ps1` for required local dependencies.
+- Use `requirements.txt` through the `setup-python-environment` command of `scripts/manage_video_toolkit.ps1` or `scripts/manage_video_toolkit.sh` for required local dependencies.
 - Use `requirements-whisperx.txt` for the preferred WhisperX backend; fallback to openai-whisper remains valid if WhisperX installation fails.
 - Do not require API keys.
 - Do not use diarization in v1.

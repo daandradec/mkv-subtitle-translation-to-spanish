@@ -6,9 +6,9 @@ from collections import Counter
 from pathlib import Path
 import re
 from statistics import median
-import tempfile
 
 from video_toolkit.subtitles.text import convert_text_subtitle_to_ass
+from video_toolkit.temp_paths import managed_temporary_directory
 
 
 SRT_TIME_RE = re.compile(
@@ -169,7 +169,7 @@ def export_synchronized_ass(output_mkv, output_ass, subtitle_stream_index, title
         raise RuntimeError("The embedded transcription track has no subtitle packets to export.")
 
     output_ass.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix="video-subtitle-ass-export-") as temporary_dir:
+    with managed_temporary_directory(prefix="video-subtitle-ass-export-") as temporary_dir:
         extracted_srt = Path(temporary_dir) / "embedded-transcription.srt"
         _run(
             [

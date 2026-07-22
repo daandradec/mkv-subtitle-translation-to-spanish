@@ -1,3 +1,4 @@
-# Preferred transcription backend. Installed into the local Python 3.12 virtual environment.
+# Preferred optional transcription backend installed by the setup-python-environment command in scripts/manage_video_toolkit.ps1 and scripts/manage_video_toolkit.sh.
+# Equivalent PEP 621 command from the repository root: `python -m pip install ".[whisperx]"`.
 # It is kept separate so the project can still run with openai-whisper fallback if WhisperX fails.
 whisperx>=3.3,<4

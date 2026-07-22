@@ -31,11 +31,11 @@ param(
 $ErrorActionPreference = "Stop"
 $env:PYTHONIOENCODING = "utf-8"
 $ScriptDir = Split-Path -Parent $PSCommandPath
-Import-Module (Join-Path $ScriptDir "..\shared\powershell\ProjectRuntime.psm1") -Force
+Import-Module (Join-Path $ScriptDir "..\..\scripts\lib\VideoToolkit.Infrastructure.psm1") -Force
 $ProjectRuntime = Initialize-VideoToolProjectRuntime -SkillRoot $ScriptDir
 $ProjectRoot = $ProjectRuntime.ProjectRoot
-$SharedPowerShellDir = $ProjectRuntime.SharedPowerShellDir
-$InputDir = Join-Path $ProjectRoot "input"
+$ScriptsDir = $ProjectRuntime.ScriptsDir
+$InputsDir = Join-Path $ProjectRoot "inputs"
 
 function Invoke-Checked {
     param(
@@ -56,7 +56,8 @@ function Initialize-PythonEnvironment {
     if ($Device -eq "cuda") {
         $setupArgs += "-EnsureCudaTorch"
     }
-    $envJson = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $SharedPowerShellDir "init_python_env.ps1") `
+    $envJson = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $ScriptsDir "manage_video_toolkit.ps1") `
+        "setup-python-environment" `
         @setupArgs
     if ($LASTEXITCODE -ne 0) {
         throw "Python environment initialization failed."
@@ -103,7 +104,7 @@ function Resolve-InputPath {
         $candidatePaths += $PathValue
     } else {
         $candidatePaths += (Join-Path $ProjectRoot $PathValue)
-        $candidatePaths += (Join-Path $InputDir $PathValue)
+        $candidatePaths += (Join-Path $InputsDir $PathValue)
     }
     foreach ($candidatePath in ($candidatePaths | Select-Object -Unique)) {
         if (Test-Path -LiteralPath $candidatePath) {
@@ -116,15 +117,15 @@ function Resolve-InputPath {
 function Get-VideoInputs {
     param([string]$PathValue)
     if ([string]::IsNullOrWhiteSpace($PathValue)) {
-        if (!(Test-Path -LiteralPath $InputDir)) {
-            throw "No existe la carpeta 'input'. Crea 'input/' y ubica alli un video, o indica -InputPath."
+        if (!(Test-Path -LiteralPath $InputsDir)) {
+            throw "No existe la carpeta 'inputs'. Crea 'inputs/' y ubica alli un video, o indica -InputPath."
         }
-        $files = @(Get-ChildItem -LiteralPath $InputDir -File | Sort-Object Name | Where-Object { Test-MediaWithAudio -PathValue $_.FullName })
+        $files = @(Get-ChildItem -LiteralPath $InputsDir -File | Sort-Object Name | Where-Object { Test-MediaWithAudio -PathValue $_.FullName })
         if ($files.Count -eq 0) {
-            throw "No se encontro ningun archivo de audio/video con audio en 'input/'."
+            throw "No se encontro ningun archivo de audio/video con audio en 'inputs/'."
         }
         if ($files.Count -gt 1) {
-            throw "Se encontraron multiples videos en 'input/'. Para procesarlos todos, llama el flujo con -InputPath '.\input'. Para uno solo, indica el archivo exacto."
+            throw "Se encontraron multiples videos en 'inputs/'. Para procesarlos todos, llama el flujo con -InputPath '.\inputs'. Para uno solo, indica el archivo exacto."
         }
         return @($files[0].FullName)
     }

@@ -5,9 +5,10 @@ import unittest
 from pathlib import Path
 
 
-SRC_DIR = Path(__file__).resolve().parents[2]
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+SRC_DIR = PROJECT_ROOT / "src"
 PYTHON_ROOTS = [
-    SRC_DIR / "shared" / "python",
+    SRC_DIR / "shared",
     SRC_DIR / "video-generate-traslated-subtitles-from-existing-subtitles" / "python",
     SRC_DIR / "video-generate-new-subtitles-from-audio" / "python",
     SRC_DIR / "video-generate-whisper-transcription" / "python",

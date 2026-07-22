@@ -22,13 +22,13 @@
   - default output has no same-stem SRT/ASS beside the MKV;
   - `--export-ass-file-subtitles` extracts from the embedded track rather than the pre-remux SRT;
   - exported ASS cue count and first cue match the normalized embedded timeline;
-  - optional ASS is written under `output/<stem>/sidecars/`.
+  - optional ASS is written under `outputs/<stem>/sidecars/`.
 
 ## Script Checks
 
-- Parse `src/shared/powershell/init_python_env.ps1`.
+- Parse `scripts/manage_video_toolkit.ps1` and its `setup-python-environment` command.
 - Parse `src/video-generate-new-subtitles-from-audio/transcribe_video_audio.ps1`.
-- Compile all Python sources under `src/shared/python/` and `src/video-generate-new-subtitles-from-audio/python/`.
+- Compile all Python sources under `src/shared/video_toolkit/` and `src/video-generate-new-subtitles-from-audio/python/`.
 - Validate that missing Python 3.12 fails with a clear installation message.
 - Use `-DryRun` to inspect backend command without transcription.
 

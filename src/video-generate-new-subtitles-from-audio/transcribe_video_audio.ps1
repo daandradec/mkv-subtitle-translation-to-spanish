@@ -23,11 +23,11 @@ param(
 
 $ErrorActionPreference = "Stop"
 $ScriptDir = Split-Path -Parent $PSCommandPath
-Import-Module (Join-Path $ScriptDir "..\shared\powershell\ProjectRuntime.psm1") -Force
+Import-Module (Join-Path $ScriptDir "..\..\scripts\lib\VideoToolkit.Infrastructure.psm1") -Force
 $ProjectRuntime = Initialize-VideoToolProjectRuntime -SkillRoot $ScriptDir
 $ProjectRoot = $ProjectRuntime.ProjectRoot
-$SharedPowerShellDir = $ProjectRuntime.SharedPowerShellDir
-$InputDir = Join-Path $ProjectRoot "input"
+$ScriptsDir = $ProjectRuntime.ScriptsDir
+$InputsDir = Join-Path $ProjectRoot "inputs"
 $TranscriptionTitlePrefix = "Transcripci$([char]0x00F3)n"
 
 foreach ($argument in @($AdditionalArguments)) {
@@ -63,7 +63,8 @@ function Initialize-PythonEnvironment {
     if ($Device -eq "cuda") {
         $setupArgs += "-EnsureCudaTorch"
     }
-    $envJson = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $SharedPowerShellDir "init_python_env.ps1") `
+    $envJson = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $ScriptsDir "manage_video_toolkit.ps1") `
+        "setup-python-environment" `
         @setupArgs
     if ($LASTEXITCODE -ne 0) {
         throw "Python environment initialization failed."
@@ -86,11 +87,11 @@ function Resolve-ProjectPath {
 }
 
 function Get-InputVideoCandidates {
-    if (!(Test-Path -LiteralPath $InputDir)) {
+    if (!(Test-Path -LiteralPath $InputsDir)) {
         return @()
     }
     $candidates = @()
-    foreach ($file in (Get-ChildItem -LiteralPath $InputDir -File)) {
+    foreach ($file in (Get-ChildItem -LiteralPath $InputsDir -File)) {
         $probeJson = & ffprobe -v error `
             -show_entries stream=index,codec_type `
             -of json `
@@ -118,11 +119,11 @@ function Resolve-InputVideoPath {
     if (!$WasProvided -or [string]::IsNullOrWhiteSpace($InputPath)) {
         $candidates = Get-InputVideoCandidates
         if ($candidates.Count -eq 0) {
-            throw "No se encontro ningun archivo de video con audio soportado por FFmpeg/Whisper en la carpeta 'input'. Para transcribir audio, ubica un video en 'input/' o indica -InputVideo."
+            throw "No se encontro ningun archivo de video con audio soportado por FFmpeg/Whisper en la carpeta 'inputs'. Para transcribir audio, ubica un video en 'inputs/' o indica -InputVideo."
         }
         if ($candidates.Count -gt 1) {
             $names = ($candidates | ForEach-Object { $_.Name }) -join "', '"
-            throw "Se encontraron multiples videos en 'input': '$names'. El flujo solo puede procesar un video por ejecucion. Indica exactamente un archivo con -InputVideo."
+            throw "Se encontraron multiples videos en 'inputs': '$names'. El flujo solo puede procesar un video por ejecucion. Indica exactamente un archivo con -InputVideo."
         }
         return $candidates[0].FullName
     }
@@ -131,7 +132,7 @@ function Resolve-InputVideoPath {
     if ([System.IO.Path]::IsPathRooted($InputPath)) {
         $candidatePaths += $InputPath
     } else {
-        $candidatePaths += (Join-Path $InputDir $InputPath)
+        $candidatePaths += (Join-Path $InputsDir $InputPath)
         $candidatePaths += (Join-Path $ProjectRoot $InputPath)
     }
 
@@ -142,7 +143,7 @@ function Resolve-InputVideoPath {
         }
     }
 
-    throw "No se encontro el archivo de video indicado: $InputPath. Debe existir en 'input/' o debes pasar una ruta valida con -InputVideo."
+    throw "No se encontro el archivo de video indicado: $InputPath. Debe existir en 'inputs/' o debes pasar una ruta valida con -InputVideo."
 }
 
 function Assert-InputVideo {

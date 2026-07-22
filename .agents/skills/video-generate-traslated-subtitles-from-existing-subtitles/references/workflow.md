@@ -2,18 +2,18 @@
 
 ## 1. Prepare Workspace
 
-- Expect `/input` for source MKV files.
-- Treat `input/` as the only canonical input folder. If the user says `inputs/<file>.mkv`, correct it to `input/<file>.mkv` only when that file exists.
-- If `/input` has no MKV files and the user did not provide a valid MKV path, stop before spawning subagents and say: "No se encontró ningún video MKV en la carpeta `input`. Para ejecutar este flujo es obligatorio ubicar un archivo de video `.mkv` con subtítulos incrustados en `input/` o indicar la ruta exacta del archivo."
-- If `/input` has multiple MKV files, require exactly one explicit input MKV name/path for the run. Do not choose automatically.
+- Expect `/inputs` for source MKV files.
+- Treat `inputs/` as the only canonical input folder.
+- If `/inputs` has no MKV files and the user did not provide a valid MKV path, stop before spawning subagents and say: "No se encontró ningún video MKV en la carpeta `inputs`. Para ejecutar este flujo es obligatorio ubicar un archivo de video `.mkv` con subtítulos incrustados en `inputs/` o indicar la ruta exacta del archivo."
+- If `/inputs` has multiple MKV files, require exactly one explicit input MKV name/path for the run. Do not choose automatically.
 - If the user provides an input name/path, verify it resolves to exactly one existing `.mkv` file before doing any extraction, translation, or remuxing.
 - Use the exact source filename without its extension as `<stem>`; never add a random/hash suffix or accept a custom workspace id.
-- Write only the final MKV deliverable to `output/<stem>/`; do not publish ASS/SRT sidecars for this workflow.
-- Write source subtitles under `output/<stem>/debug/video-generate-traslated-subtitles-from-existing-subtitles/subtitles/source/` and generated ASS/SRT files under `output/<stem>/debug/video-generate-traslated-subtitles-from-existing-subtitles/subtitles/generated/`.
-- Write grouping, review, translation maps, checkpoints, postprocessing artifacts, and reports under their appropriate subdirectories in `output/<stem>/debug/video-generate-traslated-subtitles-from-existing-subtitles/`.
-- A fresh run clears the existing contents of `output/<stem>/` after validating that it is a direct child of `output/` and contains no reparse points. Use `-Resume` to preserve an existing translation checkpoint and its maps.
+- Write only the final MKV deliverable to `outputs/<stem>/`; do not publish ASS/SRT sidecars for this workflow.
+- Write source subtitles under `outputs/<stem>/debug/video-generate-traslated-subtitles-from-existing-subtitles/subtitles/source/` and generated ASS/SRT files under `outputs/<stem>/debug/video-generate-traslated-subtitles-from-existing-subtitles/subtitles/generated/`.
+- Write grouping, review, translation maps, checkpoints, postprocessing artifacts, and reports under their appropriate subdirectories in `outputs/<stem>/debug/video-generate-traslated-subtitles-from-existing-subtitles/`.
+- A fresh run clears the existing contents of `outputs/<stem>/` after validating that it is a direct child of `outputs/` and contains no reparse points. Use `-Resume` to preserve an existing translation checkpoint and its maps.
 - Never commit media, extracted subtitles, or generated outputs.
-- Initialize `.venv/` with Python 3.12 using `src/shared/powershell/init_python_env.ps1` before running Python helpers. Use `.venv/Scripts/python.exe`, not the global Python.
+- Initialize `.venv/` with Python 3.12 using `scripts/manage_video_toolkit.ps1 setup-python-environment` on Windows or `scripts/manage_video_toolkit.sh setup-python-environment` on Ubuntu before running Python helpers. Use the Python executable from `.venv/`, not the global Python.
 - Plan subagent usage in small batches before spawning any role. Keep at most two active subagents, wait for results, integrate them, and close completed agents before the next batch.
 
 ## 1.1 Agent Lifecycle Checkpoint
@@ -42,7 +42,7 @@
 - Extract subtitles without recoding when possible.
 - The canonical launcher performs this extraction before checking for translation maps.
 - If maps are absent, treat `[CHECKPOINT:AWAITING_TRANSLATION_MAPS]` as a required agent handoff, not as completion or a broken import.
-- Read `output/<stem>/debug/video-generate-traslated-subtitles-from-existing-subtitles/checkpoints/translation_checkpoint.json`; it records the exact source ASS, language, stream/track IDs, map directory, and resume command.
+- Read `outputs/<stem>/debug/video-generate-traslated-subtitles-from-existing-subtitles/checkpoints/translation_checkpoint.json`; it records the exact source ASS, language, stream/track IDs, map directory, and resume command.
 - Generate maps from that extracted subtitle and run the recorded command with `-Resume`, `SourceSubtitleStreamIndex`, and `SourceMkvTrackId`.
 - Parse with format-aware logic:
   - ASS: split `Dialogue:` into 10 fields and preserve timing/style/effect.
@@ -69,7 +69,7 @@
 - Translate grouped text to Spanish LatAm.
 - Keep translations concise enough for subtitle reading speed.
 - Run linguistic review after merging dialogue and song translations.
-- Resolve or generate local translation maps under `output/<stem>/debug/video-generate-traslated-subtitles-from-existing-subtitles/translations/<source_lang>/` for every supported language, including English.
+- Resolve or generate local translation maps under `outputs/<stem>/debug/video-generate-traslated-subtitles-from-existing-subtitles/translations/<source_lang>/` for every supported language, including English.
 - Do not rely on legacy root-level maps. Migrate only maps verified against the same extracted source subtitle.
 - Do not reuse maps across different source languages or unrelated videos.
 - Maintain and apply a local term map/glossary for recurring names, places, factions, ranks, and culturally specific terms.
@@ -86,6 +86,6 @@
 - Extract the Spanish subtitle track from the final MKV and inspect samples.
 - Confirm readable Spanish near early dialogue and known song timestamps.
 - Confirm no visible ASS commands, drawing paths, or numeric garbage.
-- Confirm the final MKV is the only file at the root of `output/<stem>/`, generated ASS/SRT files are under `debug/video-generate-traslated-subtitles-from-existing-subtitles/subtitles/generated/`, and no external subtitle can appear as a `[Local]` player track.
+- Confirm the final MKV is the only file at the root of `outputs/<stem>/`, generated ASS/SRT files are under `debug/video-generate-traslated-subtitles-from-existing-subtitles/subtitles/generated/`, and no external subtitle can appear as a `[Local]` player track.
 - Confirm the first subtitle track is Spanish, only the intended Spanish track has `default=1`, and every original subtitle track has `default=0`.
 - Persist the machine-readable result at `debug/video-generate-traslated-subtitles-from-existing-subtitles/reports/remux_validation_report.json` and fail the workflow when the order/default contract is not met.

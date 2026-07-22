@@ -27,18 +27,20 @@ class TranscriptionWorkflowTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             choose_backend("auto", resolver=resolver_with())
 
-    def test_build_whisper_command_includes_transcribe_task(self):
+    def test_build_whisper_command_includes_transcribe_task_and_model_cache(self):
         command = build_backend_command(
             backend="whisper",
             audio="audio.wav",
             output_dir="out",
             language="Spanish",
             whisper_model="turbo",
+            whisper_model_dir="C:/cache/models/whisper",
         )
         self.assertIn("--task", command)
         self.assertIn("transcribe", command)
         self.assertIn("--language", command)
         self.assertIn("Spanish", command)
+        self.assertEqual(command[command.index("--model_dir") + 1], "C:/cache/models/whisper")
 
     def test_build_whisperx_maximum_quality_command(self):
         command = build_backend_command(

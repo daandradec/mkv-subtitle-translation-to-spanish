@@ -2,7 +2,7 @@
 
 ## Objective
 
-Build a robust workflow that takes one MKV file from `/input`, translates its subtitle content to Spanish LatAm through an agentic multi-phase process, and writes the final MKV plus generated subtitle files to `/output`.
+Build a robust workflow that takes one MKV file from `/inputs`, translates its subtitle content to Spanish LatAm through an agentic multi-phase process, and writes the final MKV plus generated subtitle files to `/outputs`.
 
 The workflow must prioritize semantic quality, subtitle timing integrity, and playback compatibility across computers and consumer TVs.
 
@@ -15,8 +15,8 @@ Future versions must avoid translating ASS drawing/effect fragments as text. Whe
 ## Functional Requirements
 
 1. Input/output layout:
-   - `/input` contains the source MKV.
-   - `/output` contains the final translated MKV and the generated subtitle file(s).
+   - `/inputs` contains the source MKV.
+   - `/outputs` contains the final translated MKV and the generated subtitle file(s).
    - Intermediate extraction, analysis, and debug artifacts stay outside version control.
 
 2. Agentic translation pipeline:
@@ -55,7 +55,7 @@ Future versions must avoid translating ASS drawing/effect fragments as text. Whe
 
 ## Success Criteria
 
-- A user can place an MKV in `/input`, run the workflow, and receive translated outputs in `/output`.
+- A user can place an MKV in `/inputs`, run the workflow, and receive translated outputs in `/outputs`.
 - The Spanish subtitles are semantically coherent because translation happens over grouped text, not isolated fragments.
 - Songs either render as readable Spanish lyrics or are intentionally omitted when unsafe.
 - Desktop and TV-safe outputs are validated separately.

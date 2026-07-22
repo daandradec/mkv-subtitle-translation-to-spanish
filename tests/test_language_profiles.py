@@ -1,6 +1,10 @@
 import unittest
 
-from video_toolkit.languages import UnsupportedLanguageError, get_language_profile, normalize_language_code
+from video_toolkit.languages import (
+    UnsupportedLanguageError,
+    get_language_profile,
+    normalize_language_code,
+)
 
 
 class LanguageProfileTests(unittest.TestCase):

@@ -12,8 +12,9 @@
 *.aac
 *.m4a
 *.mp3
-input/
-output/
+inputs/
+outputs/
+/dist/
 
 # Extracted/generated subtitles and working artifacts
 *.ass
@@ -51,7 +52,6 @@ env/
 .ruff_cache/
 
 # Local ML/model caches and checkpoints
-.cache/
 cache/
 models/
 !models/
@@ -88,3 +88,13 @@ desktop.ini
 *.swp
 *.swo
 *~
+
+# Repository-managed temporary workspace. Keep only its placeholder tracked.
+!/.tmp/
+/.tmp/*
+!/.tmp/.gitkeep
+
+# Repository-managed reusable cache. Keep only its placeholder tracked.
+!/.cache/
+/.cache/*
+!/.cache/.gitkeep

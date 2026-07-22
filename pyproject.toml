@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "video-toolkit-workflows"
+version = "0.1.0"
+description = "Local video transcription, subtitle generation, translation, and RAG transcription workflows"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "openai-whisper>=20240930",
+]
+
+[project.optional-dependencies]
+# WhisperX is intentionally optional: installation can fail on a machine whose
+# Python, PyTorch, CUDA, or platform combination is unsupported. The launchers
+# keep openai-whisper as a local fallback.
+whisperx = [
+    "whisperx>=3.3,<4",
+]
+all = [
+    "whisperx>=3.3,<4",
+]
+dev = [
+    "build>=1.2",
+    "setuptools>=68",
+    "wheel",
+]
+
+[tool.setuptools]
+# Keep the source layout owned by each workflow while exposing the same imports
+# to a pip-installed environment. The PowerShell launchers still set PYTHONPATH
+# through scripts/lib/VideoToolkit.Infrastructure.psm1, so source execution remains supported.
+packages = [
+    "video_toolkit",
+    "video_toolkit.languages",
+    "video_toolkit.subtitles",
+    "video_toolkit.transcription",
+    "video_generate_traslated_subtitles_from_existing_subtitles",
+    "video_generate_new_subtitles_from_audio",
+    "video_generate_whisper_transcription",
+]
+
+[tool.setuptools.package-dir]
+video_toolkit = "src/shared/video_toolkit"
+video_generate_traslated_subtitles_from_existing_subtitles = "src/video-generate-traslated-subtitles-from-existing-subtitles/python/video_generate_traslated_subtitles_from_existing_subtitles"
+video_generate_new_subtitles_from_audio = "src/video-generate-new-subtitles-from-audio/python/video_generate_new_subtitles_from_audio"
+video_generate_whisper_transcription = "src/video-generate-whisper-transcription/python/video_generate_whisper_transcription"

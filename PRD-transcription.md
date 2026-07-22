@@ -15,18 +15,18 @@ Fuentes consideradas: OpenAI Whisper (`https://github.com/openai/whisper`), Whis
 - Inicializar y activar `.venv/` con Python 3.12 antes de cualquier flujo.
 - Instalar dependencias requeridas desde `requirements.txt` dentro de `.venv/`, no en Python global.
 - Intentar instalar WhisperX desde `requirements-whisperx.txt` como backend preferido; si falla, continuar con `openai-whisper` cuando este disponible.
-- Aceptar un video en `input/` o una ruta explicita con `-InputVideo`.
+- Aceptar un video en `inputs/` o una ruta explicita con `-InputVideo`.
 - Permitir cualquier archivo de video con audio decodificable por FFmpeg/Whisper; ejemplos comunes: MKV, MP4, MOV, M4V, WebM, AVI, WMV, FLV, TS/M2TS, MPEG/MPG, 3GP/3G2 y OGV.
 - Procesar solo un video por ejecucion.
 - Seleccionar el audio default o permitir override con `-AudioStreamIndex`.
-- Extraer audio a WAV mono 16 kHz reproducible en `output/<stem>/debug/video-generate-new-subtitles-from-audio/audio/`.
+- Extraer audio a WAV mono 16 kHz reproducible en `outputs/<stem>/debug/video-generate-new-subtitles-from-audio/audio/`.
 - Transcribir al idioma original:
   - usar WhisperX cuando este disponible;
   - usar `openai-whisper` si WhisperX no existe;
   - permitir `-Language`, pero si falta dejar que el backend detecte idioma.
-- Generar `output/<stem>/<stem>.transcribed.mkv` como entregable predeterminado.
-- Generar opcionalmente `output/<stem>/sidecars/<stem>.transcribed.ass` con `--export-ass-file-subtitles`, extrayéndolo del MKV ya normalizado.
-- Escribir reportes en `output/<stem>/debug/video-generate-new-subtitles-from-audio/reports/`.
+- Generar `outputs/<stem>/<stem>.transcribed.mkv` como entregable predeterminado.
+- Generar opcionalmente `outputs/<stem>/sidecars/<stem>.transcribed.ass` con `--export-ass-file-subtitles`, extrayéndolo del MKV ya normalizado.
+- Escribir reportes en `outputs/<stem>/debug/video-generate-new-subtitles-from-audio/reports/`.
 - Incrustar la pista SRT transcrita en un MKV final con `mkvmerge`, sin recodificar video/audio cuando el contenedor permita copy remux.
 - Mantener pistas originales y marcar la pista transcrita como default.
 - Avisar si el idioma detectado no esta dentro de los idiomas soportados por la skill de traduccion.
@@ -35,8 +35,8 @@ Fuentes consideradas: OpenAI Whisper (`https://github.com/openai/whisper`), Whis
 
 1. Validar Python 3.12 y crear/activar `.venv/`.
 2. Instalar o actualizar dependencias cuando cambie `requirements.txt` o `requirements-whisperx.txt`.
-3. Validar `input/`, archivo de video, FFmpeg, FFprobe y MKVToolNix.
-4. Limpiar de forma segura y crear el destino determinista `output/<stem>/`, sin hash ni identificador personalizado.
+3. Validar `inputs/`, archivo de video, FFmpeg, FFprobe y MKVToolNix.
+4. Limpiar de forma segura y crear el destino determinista `outputs/<stem>/`, sin hash ni identificador personalizado.
 5. Inspeccionar audio con `ffprobe` y seleccionar la pista adecuada.
 6. Extraer audio con:
 
@@ -86,7 +86,7 @@ Si el idioma detectado no pertenece a los idiomas traducibles actuales, el MKV t
   - postproceso genera SRT interno limpio y reporte;
   - mapeo de idioma produce metadata MKV razonable y warnings para idiomas no traducibles.
 - Script tests:
-  - parse de `src/shared/powershell/init_python_env.ps1`;
+  - parse de `scripts/manage_video_toolkit.ps1` y su comando `setup-python-environment`;
   - parse de `src/video-generate-new-subtitles-from-audio/transcribe_video_audio.ps1`;
   - `py_compile` de modulos nuevos.
 - Validacion manual:

@@ -5,9 +5,9 @@ Convert extracted text subtitle tracks (SRT or WebVTT) into a simple ASS file.
 This module is intentionally standalone so existing ASS-oriented workflow stages can
 consume SRT/VTT input tracks after extraction without changing their parser contracts.
 
-Example, with ``src/shared/python`` on ``PYTHONPATH``:
-    python -m video_toolkit.subtitles.text --input input.srt --output output/input/debug/manual/input.ass
-    python -m video_toolkit.subtitles.text --input input.vtt --output output/input/debug/manual/input.ass --format vtt
+Example, with ``src/shared`` on ``PYTHONPATH``:
+    python -m video_toolkit.subtitles.text --input input.srt --output outputs/manual/debug/input.ass
+    python -m video_toolkit.subtitles.text --input input.vtt --output outputs/manual/debug/input.ass --format vtt
 """
 
 import argparse

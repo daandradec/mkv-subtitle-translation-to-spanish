@@ -7,7 +7,8 @@ from pathlib import Path
 
 
 POWERSHELL = shutil.which("powershell")
-MODULE_PATH = Path(__file__).resolve().parents[1] / "powershell" / "ProjectRuntime.psm1"
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+MODULE_PATH = PROJECT_ROOT / "scripts" / "lib" / "VideoToolkit.Infrastructure.psm1"
 
 
 def ps_quote(value):
@@ -23,7 +24,7 @@ class OutputWorkspaceTests(unittest.TestCase):
             f"-ProjectRoot {ps_quote(root)} "
             f"-OutputDir {ps_quote(output_dir)} "
             f"-DebugDir {ps_quote(debug_dir)} "
-            f"-InputPath {ps_quote(Path(root) / 'input' / 'video.mp4')} "
+            f"-InputPath {ps_quote(Path(root) / 'inputs' / 'video.mp4')} "
             "-Workflow 'test-workflow'"
             + (" -Resume" if resume else ""),
             "$result | ConvertTo-Json -Compress",
@@ -38,7 +39,8 @@ class OutputWorkspaceTests(unittest.TestCase):
     def test_fresh_workspace_clears_existing_contents_and_writes_manifest(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            output_dir = root / "output" / "video"
+            (root / "outputs").mkdir()
+            output_dir = root / "outputs" / "video"
             debug_dir = output_dir / "debug" / "test-workflow"
             stale = output_dir / "old" / "stale.txt"
             stale.parent.mkdir(parents=True)
@@ -55,7 +57,8 @@ class OutputWorkspaceTests(unittest.TestCase):
     def test_resume_preserves_existing_debug_artifacts(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            output_dir = root / "output" / "video"
+            (root / "outputs").mkdir()
+            output_dir = root / "outputs" / "video"
             debug_dir = output_dir / "debug" / "test-workflow"
             marker = debug_dir / "checkpoint.json"
             marker.parent.mkdir(parents=True)
@@ -71,7 +74,8 @@ class OutputWorkspaceTests(unittest.TestCase):
     def test_nested_or_external_output_target_is_rejected(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            output_dir = root / "output" / "video" / "nested"
+            (root / "outputs").mkdir()
+            output_dir = root / "outputs" / "video" / "nested"
             debug_dir = output_dir / "debug" / "test-workflow"
 
             result = self.invoke_workspace(root, output_dir, debug_dir)
@@ -82,7 +86,8 @@ class OutputWorkspaceTests(unittest.TestCase):
     def test_legacy_archive_target_is_rejected(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            output_dir = root / "output" / "_legacy"
+            (root / "outputs").mkdir()
+            output_dir = root / "outputs" / "_legacy"
             debug_dir = output_dir / "debug" / "test-workflow"
 
             result = self.invoke_workspace(root, output_dir, debug_dir)
@@ -93,8 +98,8 @@ class OutputWorkspaceTests(unittest.TestCase):
     def test_file_at_output_target_is_rejected(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            output_dir = root / "output" / "video"
-            output_dir.parent.mkdir(parents=True)
+            (root / "outputs").mkdir()
+            output_dir = root / "outputs" / "video"
             output_dir.write_text("not a directory", encoding="utf-8")
             debug_dir = output_dir / "debug" / "test-workflow"
 

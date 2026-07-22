@@ -2,6 +2,7 @@
 import argparse
 import importlib.metadata
 import json
+import os
 import shutil
 from pathlib import Path
 
@@ -95,6 +96,7 @@ def build_backend_command(
     language="",
     whisperx_model="large-v3",
     whisper_model="turbo",
+    whisper_model_dir="",
     device="cuda",
     compute_type="float16",
     batch_size=8,
@@ -184,6 +186,8 @@ def build_backend_command(
             "--verbose",
             "False",
         ]
+        if whisper_model_dir:
+            command.extend(["--model_dir", str(whisper_model_dir)])
         if language:
             command.extend(["--language", language])
         return command
@@ -200,6 +204,7 @@ def resolve_backend_payload(args):
         language=args.language,
         whisperx_model=args.whisperx_model,
         whisper_model=args.whisper_model,
+        whisper_model_dir=args.whisper_model_dir,
         device=args.device,
         compute_type=args.compute_type,
         batch_size=args.batch_size,
@@ -262,6 +267,7 @@ def main():
     parser.add_argument("--language", default="")
     parser.add_argument("--whisperx-model", default="large-v3")
     parser.add_argument("--whisper-model", default="turbo")
+    parser.add_argument("--whisper-model-dir", default=os.environ.get("WHISPER_CACHE_DIR", ""))
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--compute-type", default="float16")
     parser.add_argument("--batch-size", type=int, default=8)

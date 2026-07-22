@@ -4,15 +4,15 @@
 
 The transcription flow writes:
 
-- `output/<stem>/<stem>.transcribed.mkv`
-- optional `output/<stem>/sidecars/<stem>.transcribed.ass` with `--export-ass-file-subtitles`
-- internal `output/<stem>/debug/video-generate-new-subtitles-from-audio/postprocess/<stem>.transcribed.srt`
-- `output/<stem>/debug/video-generate-new-subtitles-from-audio/reports/transcription_report.json`
-- `output/<stem>/debug/video-generate-new-subtitles-from-audio/reports/remux_validation.json`
+- `outputs/<stem>/<stem>.transcribed.mkv`
+- optional `outputs/<stem>/sidecars/<stem>.transcribed.ass` with `--export-ass-file-subtitles`
+- internal `outputs/<stem>/debug/video-generate-new-subtitles-from-audio/postprocess/<stem>.transcribed.srt`
+- `outputs/<stem>/debug/video-generate-new-subtitles-from-audio/reports/transcription_report.json`
+- `outputs/<stem>/debug/video-generate-new-subtitles-from-audio/reports/remux_validation.json`
 
 Raw backend files stay in:
 
-- `output/<stem>/debug/video-generate-new-subtitles-from-audio/whisper/`
+- `outputs/<stem>/debug/video-generate-new-subtitles-from-audio/whisper/`
 
 ## SRT
 

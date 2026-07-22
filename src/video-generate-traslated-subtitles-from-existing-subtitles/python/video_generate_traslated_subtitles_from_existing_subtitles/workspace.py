@@ -9,7 +9,7 @@ from video_toolkit.workspace_ids import output_folder_name
 def build_workspace(input_mkv):
     output_name = output_folder_name(input_mkv)
     stem = Path(input_mkv).stem
-    output_dir = Path("output") / output_name
+    output_dir = Path("outputs") / output_name
     debug_dir = output_dir / "debug" / "video-generate-traslated-subtitles-from-existing-subtitles"
     subtitles_dir = debug_dir / "subtitles"
     source_dir = subtitles_dir / "source"

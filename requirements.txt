@@ -1,3 +1,6 @@
-# Required project runtime dependencies installed into the local Python 3.12 virtual environment.
+# Compatibility requirements file used by the setup-python-environment command in scripts/manage_video_toolkit.ps1 and scripts/manage_video_toolkit.sh.
+# The canonical PEP 621 declaration is pyproject.toml; keep this file so the
+# existing PowerShell bootstrap remains usable on machines without packaging
+# tooling knowledge. The managed build scripts install the same base dependency.
 # WhisperX is installed from requirements-whisperx.txt as the preferred optional backend.
 openai-whisper>=20240930

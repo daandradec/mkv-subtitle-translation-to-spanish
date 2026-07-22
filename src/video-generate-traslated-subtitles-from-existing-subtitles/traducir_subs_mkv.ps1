@@ -18,11 +18,11 @@ param(
 
 $ErrorActionPreference = "Stop"
 $ScriptDir = Split-Path -Parent $PSCommandPath
-Import-Module (Join-Path $ScriptDir "..\shared\powershell\ProjectRuntime.psm1") -Force
+Import-Module (Join-Path $ScriptDir "..\..\scripts\lib\VideoToolkit.Infrastructure.psm1") -Force
 $ProjectRuntime = Initialize-VideoToolProjectRuntime -SkillRoot $ScriptDir
 $ProjectRoot = $ProjectRuntime.ProjectRoot
-$SharedPowerShellDir = $ProjectRuntime.SharedPowerShellDir
-$InputDir = Join-Path $ProjectRoot "input"
+$ScriptsDir = $ProjectRuntime.ScriptsDir
+$InputsDir = Join-Path $ProjectRoot "inputs"
 $SpanishTitle = "Espa$([char]0x00F1)ol LatAm"
 $MkvMergeCommand = Get-Command "mkvmerge" -ErrorAction SilentlyContinue
 
@@ -38,7 +38,8 @@ function Invoke-Checked {
 }
 
 function Initialize-PythonEnvironment {
-    $envJson = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $SharedPowerShellDir "init_python_env.ps1") `
+    $envJson = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $ScriptsDir "manage_video_toolkit.ps1") `
+        "setup-python-environment" `
         -ProjectRoot $ProjectRoot `
         -Json
     if ($LASTEXITCODE -ne 0) {
@@ -54,10 +55,10 @@ function Initialize-PythonEnvironment {
 }
 
 function Get-InputMkvCandidates {
-    if (!(Test-Path -LiteralPath $InputDir)) {
+    if (!(Test-Path -LiteralPath $InputsDir)) {
         return @()
     }
-    return @(Get-ChildItem -LiteralPath $InputDir -Filter "*.mkv" -File)
+    return @(Get-ChildItem -LiteralPath $InputsDir -Filter "*.mkv" -File)
 }
 
 function Resolve-InputMkvPath {
@@ -69,11 +70,11 @@ function Resolve-InputMkvPath {
     if (!$WasProvided -or [string]::IsNullOrWhiteSpace($InputPath)) {
         $candidates = Get-InputMkvCandidates
         if ($candidates.Count -eq 0) {
-            throw "No se encontró ningún video MKV en la carpeta 'input'. Para ejecutar este flujo es obligatorio ubicar un archivo de video .mkv con subtítulos incrustados en 'input/' o indicar -InputMkv con la ruta del archivo."
+            throw "No se encontró ningún video MKV en la carpeta 'inputs'. Para ejecutar este flujo es obligatorio ubicar un archivo de video .mkv con subtítulos incrustados en 'inputs/' o indicar -InputMkv con la ruta del archivo."
         }
         if ($candidates.Count -gt 1) {
             $names = ($candidates | ForEach-Object { $_.Name }) -join "', '"
-            throw "Se encontraron múltiples videos MKV en 'input': '$names'. El flujo solo puede procesar un video por ejecución. Indica exactamente un archivo con -InputMkv, por ejemplo: -InputMkv `"input\<nombre-del-video>.mkv`"."
+            throw "Se encontraron múltiples videos MKV en 'inputs': '$names'. El flujo solo puede procesar un video por ejecución. Indica exactamente un archivo con -InputMkv, por ejemplo: -InputMkv `"inputs\<nombre-del-video>.mkv`"."
         }
         return $candidates[0].FullName
     }
@@ -82,7 +83,7 @@ function Resolve-InputMkvPath {
     if ([System.IO.Path]::IsPathRooted($InputPath)) {
         $candidatePaths += $InputPath
     } else {
-        $candidatePaths += (Join-Path $InputDir $InputPath)
+        $candidatePaths += (Join-Path $InputsDir $InputPath)
         $candidatePaths += (Join-Path $ProjectRoot $InputPath)
     }
 
@@ -96,7 +97,7 @@ function Resolve-InputMkvPath {
         }
     }
 
-    throw "No se encontró el archivo de video MKV indicado: $InputPath. Debe existir en 'input/' o debes pasar una ruta válida con -InputMkv."
+    throw "No se encontró el archivo de video MKV indicado: $InputPath. Debe existir en 'inputs/' o debes pasar una ruta válida con -InputMkv."
 }
 
 $inputMkvWasProvided = $PSBoundParameters.ContainsKey("InputMkv")

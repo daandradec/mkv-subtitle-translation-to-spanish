@@ -20,19 +20,19 @@ from video_generate_new_subtitles_from_audio.workspace import build_transcriptio
 
 class TranscriptionWorkflowTests(unittest.TestCase):
     def test_transcription_workspace_uses_deterministic_output_name(self):
-        workspace = build_transcription_workspace("input/NIPPON SANGOKU.mp4")
+        workspace = build_transcription_workspace("inputs/NIPPON SANGOKU.mp4")
         self.assertEqual(workspace["output_name"], "NIPPON SANGOKU")
-        self.assertIn("output/NIPPON SANGOKU/debug/video-generate-new-subtitles-from-audio/audio", workspace["audio_wav"].replace("\\", "/"))
+        self.assertIn("outputs/NIPPON SANGOKU/debug/video-generate-new-subtitles-from-audio/audio", workspace["audio_wav"].replace("\\", "/"))
         self.assertIn(
-            "output/NIPPON SANGOKU/debug/video-generate-new-subtitles-from-audio/postprocess/NIPPON SANGOKU.transcribed.srt",
+            "outputs/NIPPON SANGOKU/debug/video-generate-new-subtitles-from-audio/postprocess/NIPPON SANGOKU.transcribed.srt",
             workspace["transcribed_srt"].replace("\\", "/"),
         )
         self.assertIn(
-            "output/NIPPON SANGOKU/NIPPON SANGOKU.transcribed.mkv",
+            "outputs/NIPPON SANGOKU/NIPPON SANGOKU.transcribed.mkv",
             workspace["transcribed_mkv"].replace("\\", "/"),
         )
         self.assertIn(
-            "output/NIPPON SANGOKU/sidecars/NIPPON SANGOKU.transcribed.ass",
+            "outputs/NIPPON SANGOKU/sidecars/NIPPON SANGOKU.transcribed.ass",
             workspace["exported_ass"].replace("\\", "/"),
         )
         self.assertNotEqual(
@@ -44,7 +44,7 @@ class TranscriptionWorkflowTests(unittest.TestCase):
             Path(workspace["transcribed_srt"]).parent,
         )
         self.assertIn(
-            "output/NIPPON SANGOKU/debug/video-generate-new-subtitles-from-audio/reports/remux_validation.json",
+            "outputs/NIPPON SANGOKU/debug/video-generate-new-subtitles-from-audio/reports/remux_validation.json",
             workspace["remux_validation_report"].replace("\\", "/"),
         )
 

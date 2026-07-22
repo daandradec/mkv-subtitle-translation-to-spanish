@@ -14,7 +14,7 @@ Review generated transcript text for obvious ASR failures before embedding.
 - Sample early, middle, and late cues.
 - Flag repeated hallucinated phrases, empty transcript, wrong language, numeric garbage, or severe timestamp drift.
 - Do not rewrite the whole transcript in v1.
-- Suggest rerun options such as explicit `-Language`, reviewing `.venv\setup.log` when WhisperX failed, or selecting a different audio stream.
+- Suggest rerun options such as explicit `-Language`, reviewing `.tmp\logs\setup.log` when WhisperX failed, or selecting a different audio stream.
 
 ## Output Contract
 

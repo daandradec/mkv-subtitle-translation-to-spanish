@@ -20,7 +20,7 @@ Validate generated transcription subtitle files and the final MKV output.
 - Confirm all source stream types/counts are preserved and exactly one transcription subtitle stream was added.
 - Compare source SRT cue starts with embedded packet timestamps. Every cue must receive one uniform mux shift with no more than 5 ms spread.
 - Extract the embedded subtitle track and sample readable text.
-- Confirm the final MKV is in `output/<stem>/`, internal SRT is under `output/<stem>/debug/video-generate-new-subtitles-from-audio/`, and optional ASS is in `output/<stem>/sidecars/`.
+- Confirm the final MKV is in `outputs/<stem>/`, internal SRT is under `outputs/<stem>/debug/video-generate-new-subtitles-from-audio/`, and optional ASS is in `outputs/<stem>/sidecars/`.
 
 ## Output Contract
 

@@ -7,7 +7,7 @@ RESERVED_OUTPUT_NAMES = {"_legacy"}
 
 
 def output_folder_name(input_video):
-    """Return the source filename without its extension for use under output/."""
+    """Return the source filename without its extension for use under outputs/."""
     stem = Path(input_video).stem.rstrip(". ")
     if not stem or stem in {".", ".."}:
         raise ValueError(f"Could not derive a safe output folder name from: {input_video}")

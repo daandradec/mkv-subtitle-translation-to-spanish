@@ -9,7 +9,7 @@ from video_toolkit.workspace_ids import output_folder_name
 def build_transcription_workspace(input_video):
     output_name = output_folder_name(input_video)
     stem = Path(input_video).stem
-    output_dir = Path("output") / output_name
+    output_dir = Path("outputs") / output_name
     debug_dir = output_dir / "debug" / "video-generate-new-subtitles-from-audio"
     whisper_output_dir = debug_dir / "whisper"
     postprocess_dir = debug_dir / "postprocess"

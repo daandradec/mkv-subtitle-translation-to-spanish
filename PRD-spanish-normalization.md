@@ -4,8 +4,8 @@
 
 Agregar una fase posterior a la generación actual del MKV final para normalizar el español de salida usando como entradas las dos pistas generadas:
 
-- `output/*.spa.ass`, correspondiente a `Español LatAm [spa] (ass)`.
-- `output/*.spa.srt`, correspondiente a `Español LatAm TV-safe [spa] (subrip)`.
+- `outputs/*.spa.ass`, correspondiente a `Español LatAm [spa] (ass)`.
+- `outputs/*.spa.srt`, correspondiente a `Español LatAm TV-safe [spa] (subrip)`.
 
 La fase debe producir subtítulos en español latino más naturales, coherentes y respetuosos con el tono de la obra. Al finalizar, ambas pistas españolas deben compartir exactamente el mismo contenido textual normalizado, conservando cada una su propósito técnico: ASS para fidelidad general y SRT/SubRip para compatibilidad TV-safe.
 
@@ -15,7 +15,7 @@ El flujo actual ya genera:
 
 1. Una pista `Español LatAm [spa] (ass)` con buen nivel de naturalidad y estilos ASS.
 2. Una pista `Español LatAm TV-safe [spa] (subrip)` pensada para televisores y reproductores que renderizan mal ASS complejo.
-3. Un MKV portable en `output/portable` con ambas pistas incrustadas.
+3. Un MKV portable en `outputs/portable` con ambas pistas incrustadas.
 
 Durante la revisión manual se detectó que los subtítulos principales ubicados en la parte inferior central no siempre tienen el mismo texto entre ASS y SRT. En algunos casos la versión ASS es más natural; en otros, la versión TV-safe puede contener diferencias que no conviene conservar. La nueva fase debe analizar ambas pistas y generar una versión textual unificada y mejorada.
 
@@ -45,7 +45,7 @@ Esto puede producir dos experiencias lingüísticas diferentes para el usuario, 
 3. Salidas:
    - Generar un ASS español normalizado que preserve tiempos, estilos, capas y comportamiento actual.
    - Generar un SRT TV-safe normalizado con el mismo contenido textual que el ASS normalizado cuando representen el mismo evento visible.
-   - Regenerar el MKV de `output/portable` con:
+   - Regenerar el MKV de `outputs/portable` con:
      - pista inglesa original ASS;
      - pista `Español LatAm [spa] (ass)`;
      - pista `Español LatAm TV-safe [spa] (subrip)` como default.
@@ -104,7 +104,7 @@ El agente principal coordina subagentes y conserva la responsabilidad de integra
    - Verifica igualdad textual entre ASS normalizado y SRT normalizado para eventos equivalentes.
    - Extrae la pista final desde el MKV portable.
    - Escanea basura visible: tags ASS, dibujos, comandos, rutas vectoriales, placeholders, caracteres repetidos o números sin sentido.
-   - Valida metadatos, pistas, default flags y ausencia de subtítulos `[Local]` en `output/portable`.
+   - Valida metadatos, pistas, default flags y ausencia de subtítulos `[Local]` en `outputs/portable`.
 
 ## Estrategia de Implementación
 
@@ -169,7 +169,7 @@ El agente principal coordina subagentes y conserva la responsabilidad de integra
      - `eng` ASS original no-default;
      - `spa` ASS `Español LatAm` no-default;
      - `spa` SubRip `Español LatAm TV-safe` default.
-   - `output/portable` no contiene `.ass` ni `.srt` junto al MKV final.
+   - `outputs/portable` no contiene `.ass` ni `.srt` junto al MKV final.
 
 3. Escaneo anti-basura:
    - Sin `{...}` visible.
@@ -209,7 +209,7 @@ El agente principal coordina subagentes y conserva la responsabilidad de integra
 ## Criterios de Éxito
 
 - El usuario puede ejecutar el flujo actual y luego la fase de normalización.
-- El MKV final en `output/portable` contiene ASS y SRT españoles normalizados.
+- El MKV final en `outputs/portable` contiene ASS y SRT españoles normalizados.
 - Los subtítulos principales equivalentes dicen lo mismo en ASS y TV-safe.
 - La redacción se siente natural, respetuosa y coherente con la obra.
 - El comportamiento actual de canciones, diálogos simultáneos y signos se preserva.
